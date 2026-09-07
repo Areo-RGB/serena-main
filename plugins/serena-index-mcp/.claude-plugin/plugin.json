@@ -1,6 +1,6 @@
 {
   "name": "serena-index-mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Claude Code integration for the Areo-RGB Serena fork, exposing Serena as the single MCP while selected Serena tools use JetBrains Index MCP internally.",
   "author": {
     "name": "Areo-RGB"
@@ -14,7 +14,5 @@
     "jetbrains",
     "claude-code",
     "code-intelligence"
-  ],
-  "hooks": "./hooks/hooks.json",
-  "mcpServers": "./.mcp.json"
+  ]
 }
