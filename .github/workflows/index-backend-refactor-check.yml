@@ -13,6 +13,6 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
-      - run: uv sync --dev
+      - run: uv sync --extra dev
       - run: uv run python -m compileall -q src
       - run: uv run pytest -q test/serena --maxfail=1
