@@ -18,6 +18,7 @@ from serena.tools.tools_base import Tool, ToolMarkerOptional, ToolMarkerSymbolic
 from serena.util.text_utils import GlobMatcher
 from solidlsp.ls_types import SymbolKind
 
+
 class IndexMcpGetSymbolsOverviewTool(Tool, ToolMarkerSymbolicRead, ToolMarkerOptional):
     """Gets an overview of symbols using the JetBrains Index MCP backend."""
 
