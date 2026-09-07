@@ -5,6 +5,7 @@ keeping the generic LSP tools independent. They are selected only when
 LanguageBackend.INDEX_MCP is active.
 """
 
+import copy
 import os
 from collections import Counter, defaultdict
 from collections.abc import Sequence
