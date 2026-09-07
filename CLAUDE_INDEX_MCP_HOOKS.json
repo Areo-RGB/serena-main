@@ -6,27 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/paul/serena-main/.venv/bin/serena-hooks remind --client=claude-code"
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__.*__ide_.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/paul/serena-main/.venv/bin/serena-hooks auto-approve --client=claude-code"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "mcp__.*__ide_.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/home/paul/serena-main/.venv/bin/serena-hooks reset --client=claude-code"
+            "command": "uvx -p 3.13 --from git+https://github.com/Areo-RGB/serena-main serena-hooks remind --client=claude-code"
           }
         ]
       }
@@ -37,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/paul/serena-main/.venv/bin/serena-hooks activate --client=claude-code"
+            "command": "uvx -p 3.13 --from git+https://github.com/Areo-RGB/serena-main serena-hooks activate --client=claude-code"
           }
         ]
       }
@@ -48,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/paul/serena-main/.venv/bin/serena-hooks cleanup --client=claude-code"
+            "command": "uvx -p 3.13 --from git+https://github.com/Areo-RGB/serena-main serena-hooks cleanup --client=claude-code"
           }
         ]
       }

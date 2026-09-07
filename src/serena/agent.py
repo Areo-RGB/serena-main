@@ -1120,6 +1120,8 @@ class SerenaAgent:
         background_base_modes = []
         if self._language_backend.is_jetbrains():
             background_base_modes.append(SerenaAgentMode.from_name_internal("jetbrains"))
+        elif self._language_backend.is_index_mcp():
+            background_base_modes.append(SerenaAgentMode.from_name_internal("index_mcp"))
         self._active_modes = ActiveModes(background_base_modes=background_base_modes)
         self._active_modes.apply(self.serena_config)
         if self._active_project:

@@ -1,53 +1,92 @@
-# Serena search tools backed by JetBrains Index MCP
+# Serena Index MCP language backend
 
-This fork routes Serena's five primary file/symbol search tools through the JetBrains Index MCP Streamable HTTP endpoint instead of Serena's language-server/file-system search implementations.
+This fork integrates JetBrains Index MCP as a first-class Serena language backend instead of
+embedding Index MCP calls in Serena's generic LSP tools.
 
-Default endpoint:
+Default Index MCP endpoint:
 
 `http://127.0.0.1:29170/index-mcp/streamable-http`
 
-## Tool mapping
+## Architecture
 
-| Serena tool | Index MCP tool |
-|---|---|
-| `find_symbol` | `ide_find_symbol` |
-| `get_symbols_overview` | `ide_file_structure` |
-| `find_referencing_symbols` | `ide_find_references` |
-| `find_file` | `ide_find_file` |
-| `search_for_pattern` | `ide_search_text` |
+```text
+Agent
+  |
+  v
+Serena MCP
+  |
+  +-- LanguageBackend.LSP -------> generic Serena / SolidLSP tools
+  +-- LanguageBackend.JETBRAINS -> Serena JetBrains-plugin tools
+  +-- LanguageBackend.INDEX_MCP -> dedicated IndexMcp* tools
+                                      |
+                                      v
+                              JetBrains Index MCP
+```
 
-Serena's public tool names and parameters stay intact. The adapter translates Index MCP's 1-based positions, pagination, fuzzy symbol/file results, and file-structure tree into Serena-compatible output where practical.
+Start Serena with the Index MCP backend using:
+
+```bash
+serena start-mcp-server --language-backend IndexMCP
+```
+
+The Claude and VS Code plugins in this fork pass this option automatically.
+
+## Current backend replacements
+
+When `IndexMCP` is active, Serena's canonical tool roles are replaced by dedicated optional
+backend implementations:
+
+| Canonical Serena role | Effective IndexMCP Serena tool | Index MCP tool |
+|---|---|---|
+| `find_file` | `index_mcp_find_file` | `ide_find_file` |
+| `get_symbols_overview` | `index_mcp_get_symbols_overview` | `ide_file_structure` |
+| `find_symbol` | `index_mcp_find_symbol` | `ide_find_symbol` |
+| `find_referencing_symbols` | `index_mcp_find_referencing_symbols` | `ide_find_references` |
+| `search_for_pattern` | `index_mcp_search_for_pattern` | `ide_search_text` |
+
+This mirrors Serena's upstream JetBrains backend design: generic LSP tools remain independent,
+while backend-specific classes are selected through `LanguageBackend.get_lsp_tool_class_replacements()`
+and an internal backend mode.
+
+Serena preserves its own semantics at the adapter boundary, including 0-based positions, name-path
+matching, path restrictions, glob filtering and result shaping. Index MCP positions are 1-based and
+are converted to Serena's 0-based coordinate contract.
+
+## Editing
+
+The IndexMCP backend currently provides code intelligence through the five tools above. Generic
+filesystem editing such as `replace_content` remains available through Serena's filesystem editor.
+LSP-only symbolic edits/refactors are disabled in the IndexMCP internal mode until equivalent
+Index MCP backend replacements are added.
 
 ## JetBrains setup
 
 In **Settings > Tools > Index MCP Server**:
 
-1. Keep the Streamable HTTP server running on port `29170` (or override the URL as described below).
-2. Set **Response format** to **JSON**. Serena needs structured JSON payloads for translation.
-3. Under **Exposed Tools**, enable the five tools above. In the supplied Index MCP plugin source, `ide_find_symbol` and `ide_file_structure` are disabled by default, so they must be enabled explicitly.
-4. Keep the target project open in the IDE. Serena sends its active project root as `project_path` on every Index MCP call.
+1. Keep the Streamable HTTP server running on port `29170`, or set `SERENA_INDEX_MCP_URL`.
+2. Set **Response format** to **JSON**.
+3. Enable the five required `ide_*` tools.
+4. Keep the target project open/indexed. Serena supplies its active project root as `project_path`.
 
-## Optional overrides
+Optional environment overrides:
 
-- `SERENA_INDEX_MCP_URL` — override the full Streamable HTTP endpoint.
-- `SERENA_INDEX_MCP_TIMEOUT_SECONDS` — per-request HTTP timeout (default: 30 seconds).
+- `SERENA_INDEX_MCP_URL` — full Streamable HTTP endpoint.
+- `SERENA_INDEX_MCP_TIMEOUT_SECONDS` — per-request timeout, default 30 seconds.
 
-The adapter follows Index MCP cursors and caps an otherwise-unbounded search at 10,000 indexed results as a defensive ceiling.
+The Index adapter follows cursors and uses a defensive ceiling of 10,000 results for otherwise
+unbounded searches.
 
-## Index-MCP-native hooks and Claude instructions
+## Client architecture
 
-This fork also rewrites Serena's coding-agent guidance around Index MCP directly:
+The Claude and VS Code plugins expose **only Serena** to the agent. There is no second direct
+Index MCP connection in those plugins.
 
-- repeated raw `Grep`/code-file reads are redirected to `ide_*` tools;
-- successful Index MCP calls reset the hook's grep/read drift counters;
-- the session-start hook names Index MCP as the primary discovery/navigation layer;
-- Claude Code's context and prompt mapping prefer `ide_file_structure`, `ide_find_symbol`,
-  `ide_find_definition`, `ide_find_references`, `ide_find_file`, and `ide_search_text`;
-- Serena remains available as a complementary editing/project-workflow layer.
-
-Hook classification is based on the leaf tool name (`ide_*`), not on the MCP server alias. For
-Claude Code, use the matcher `mcp__.*__ide_.*`; this works whether the Index MCP server is named
-`index-mcp`, `intellij-index`, or another alias.
-
-A ready-to-copy Claude Code hooks configuration using this checkout's intended path
-(`/home/paul/serena-main`) is included as `CLAUDE_INDEX_MCP_HOOKS.json`.
+```text
+Claude Code / VS Code
+        |
+        v
+     Serena
+        |
+        v
+   Index MCP
+```
