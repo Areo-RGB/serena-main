@@ -1,44 +1,39 @@
 ---
-description: Use when working with the Areo-RGB Serena Index MCP fork, choosing between Serena and JetBrains Index MCP tools, explaining the integration, or troubleshooting its MCP/hook workflow.
+description: Use when working with the Areo-RGB Serena Index MCP fork, choosing Serena tools, explaining the integration, or troubleshooting its MCP/hook workflow.
 ---
 
 # Serena Index MCP workflow
 
-This plugin combines two layers:
+This plugin exposes **one MCP server to Claude Code: Serena**.
 
-1. **JetBrains Index MCP** is the primary code-intelligence/navigation layer.
-2. **Areo-RGB/serena-main** is the complementary project/editing workflow layer and also delegates its patched search operations to Index MCP.
+JetBrains Index MCP remains an internal backend used by selected Serena tools. Claude should not call a separate direct `ide_*` MCP server.
 
-## Prefer Index MCP for discovery
+## Index-backed Serena discovery tools
 
-Use the semantic/index-backed tool that matches the question before raw Read/Glob/Grep:
+Prefer these Serena tools before raw Read/Glob/Grep:
 
-- file outline: `ide_file_structure`
-- symbol lookup: `ide_find_symbol`
-- exact declaration at a position: `ide_find_definition`
-- references/usages: `ide_find_references`
-- file-name search: `ide_find_file`
-- text/regex search: `ide_search_text`
-- signature/docs: `ide_symbol_info`
-- implementations: `ide_find_implementations`
-- caller/callee graph: `ide_call_hierarchy`
-- inheritance graph: `ide_type_hierarchy`
+- file outline: `get_symbols_overview` -> internal `ide_file_structure`
+- symbol lookup: `find_symbol` -> internal `ide_find_symbol`
+- references/usages: `find_referencing_symbols` -> internal `ide_find_references`
+- file-name search: `find_file` -> internal `ide_find_file`
+- text/regex search: `search_for_pattern` -> internal `ide_search_text`
 
-Prefer Index MCP edit/refactor tools such as `ide_refactor_rename`, `ide_replace_text_in_file`, `ide_edit_member`, `ide_replace_member`, and `ide_insert_member` when enabled and applicable.
+## Other Serena tools
 
-## Use Serena when it adds value
+Use Serena's native symbolic/editing tools such as `find_declaration`, `find_implementations`, `rename_symbol`, `replace_symbol_body`, `insert_before_symbol`, `insert_after_symbol`, and `replace_content` when appropriate.
 
-Use Serena for project activation, memories/project workflow, and edits/refactors that Index MCP cannot express cleanly. Avoid using Serena's old file/symbol-search path as the primary discovery layer; this fork is designed around Index MCP.
+More Index MCP capabilities can be wrapped by Serena later. Until then, do not assume direct tools such as `ide_call_hierarchy`, `ide_type_hierarchy`, or `ide_refactor_rename` are available to Claude.
 
 ## Startup behavior
 
-Do **not** call Serena `initial_instructions` as a routine Claude Code startup action. The plugin's SessionStart hook and this skill provide the workflow guidance without the extra large manual round trip.
+Do **not** call Serena `initial_instructions` as a routine Claude Code startup action. The plugin's SessionStart hook and Claude context already provide the required workflow guidance.
 
 ## Runtime expectations
 
-- Index MCP endpoint: `http://127.0.0.1:29170/index-mcp/streamable-http`
-- Preferred local Serena checkout: `/home/paul/serena-main`
+- Claude-visible MCP: Serena only.
+- Serena's existing Index-backed wrappers expect the JetBrains Index MCP HTTP endpoint at `http://127.0.0.1:29170/index-mcp/streamable-http`.
+- Preferred local Serena checkout: `/home/paul/serena-main`.
 - Override the local checkout with `SERENA_FORK_HOME=/path/to/serena-main`.
 - If no local virtualenv executable exists, the plugin falls back to `uvx --from git+https://github.com/Areo-RGB/serena-main.git`.
 
-If Index MCP is unavailable, say so clearly and fall back to Serena or built-in tools rather than repeatedly retrying the same failed MCP call.
+If the internal Index MCP backend is unavailable, say so clearly and use Serena-native or built-in fallbacks where possible rather than repeatedly retrying the same failed wrapper call.
