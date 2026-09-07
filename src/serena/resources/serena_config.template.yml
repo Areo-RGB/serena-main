@@ -5,6 +5,7 @@
 #  * JetBrains: Use the Serena plugin in your JetBrains IDE.
 #      (requires the plugin to be installed and the project being worked on to be open
 #      in your IDE).
+#  * IndexMCP: Use the JetBrains Index MCP service as the code-intelligence backend.
 language_backend: LSP
 
 # line ending convention to use when writing source files.
