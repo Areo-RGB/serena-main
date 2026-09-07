@@ -11,37 +11,6 @@
         ]
       }
     ],
-    "PreToolUse": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/run-hook.sh\" remind"
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__.*__ide_.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/run-hook.sh\" auto-approve"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "mcp__.*__ide_.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/run-hook.sh\" reset"
-          }
-        ]
-      }
-    ],
     "SessionEnd": [
       {
         "matcher": "",
