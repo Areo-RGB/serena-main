@@ -279,7 +279,8 @@ class FileSystemCodeEditor(CodeEditor[Symbol]):
         def __init__(self, project_root: str, relative_path: str, encoding: str) -> None:
             super().__init__(relative_path)
             self._path = os.path.join(project_root, relative_path)
-            self._contents = open(self._path, encoding=encoding).read()
+            with open(self._path, encoding=encoding) as f:
+                self._contents = f.read()
 
         def get_contents(self) -> str:
             return self._contents
