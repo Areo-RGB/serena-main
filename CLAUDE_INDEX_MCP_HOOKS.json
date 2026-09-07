@@ -1,0 +1,57 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/paul/serena-main/.venv/bin/serena-hooks remind --client=claude-code"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__.*__ide_.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/paul/serena-main/.venv/bin/serena-hooks auto-approve --client=claude-code"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__.*__ide_.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/paul/serena-main/.venv/bin/serena-hooks reset --client=claude-code"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/paul/serena-main/.venv/bin/serena-hooks activate --client=claude-code"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/paul/serena-main/.venv/bin/serena-hooks cleanup --client=claude-code"
+          }
+        ]
+      }
+    ]
+  }
+}
