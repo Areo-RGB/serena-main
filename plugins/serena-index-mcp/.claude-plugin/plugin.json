@@ -1,7 +1,7 @@
 {
   "name": "serena-index-mcp",
-  "version": "0.1.1",
-  "description": "Claude Code integration for the Areo-RGB Serena fork plus JetBrains Index MCP, with Index-MCP-first hooks and workflow guidance.",
+  "version": "0.1.2",
+  "description": "Claude Code integration for the Areo-RGB Serena fork, exposing Serena as the single MCP while selected Serena tools use JetBrains Index MCP internally.",
   "author": {
     "name": "Areo-RGB"
   },
