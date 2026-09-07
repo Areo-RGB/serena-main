@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "serena-index": {
+      "command": "bash",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/scripts/run-serena.sh"
+      ]
+    },
+    "index-mcp": {
+      "type": "http",
+      "url": "http://127.0.0.1:29170/index-mcp/streamable-http"
+    }
+  }
+}
