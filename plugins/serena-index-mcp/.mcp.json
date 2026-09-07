@@ -10,6 +10,8 @@
         "serena",
         "start-mcp-server",
         "--context=claude-code",
+        "--language-backend",
+        "LSP",
         "--project-from-cwd"
       ]
     }
