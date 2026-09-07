@@ -18,8 +18,11 @@ Prefer these Serena tools before raw Read/Glob/Grep:
 - file-name search: `find_file` -> internal `ide_find_file`
 - text/regex search: `search_for_pattern` -> internal `ide_search_text`
 - open file in JetBrains: `open_file` -> internal `ide_open_file`
+- open project in JetBrains: `open_project` -> internal `ide_open_project`
 
 `open_file` accepts an active-project-relative path plus optional Serena-style 0-based `line` and `column` coordinates. The wrapper converts them to Index MCP's 1-based coordinates.
+
+`open_project` accepts an absolute project path plus optional `auto_link` and `timeout_seconds`. It opens the project in JetBrains and waits for indexing, using the current Serena project as the Index MCP request context.
 
 ## Other Serena tools
 
@@ -37,6 +40,7 @@ Do **not** call Serena `initial_instructions` as a routine Claude Code startup a
 - Serena is launched from `git+https://github.com/Areo-RGB/serena-main` through `uvx -p 3.13`.
 - No local Serena checkout or virtualenv is required.
 - Serena's Index-backed wrappers expect the JetBrains Index MCP HTTP endpoint at `http://127.0.0.1:29170/index-mcp/streamable-http`.
-- `ide_open_file` is disabled by default in the Index MCP plugin; enable it under **Settings > Tools > Index MCP Server > Exposed Tools** before using Serena `open_file`.
+- `ide_open_file` and `ide_open_project` are opt-in/disabled-by-default Index MCP tools; enable them under **Settings > Tools > Index MCP Server > Exposed Tools** before using Serena `open_file` or `open_project`.
+- `ide_open_project` requires at least one JetBrains project to already be open so Index MCP has a request context.
 
 If the internal Index MCP backend is unavailable, say so clearly and use Serena-native or built-in fallbacks where possible rather than repeatedly retrying the same failed wrapper call.
