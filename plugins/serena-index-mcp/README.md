@@ -1,6 +1,6 @@
 # Serena Index MCP Claude Code plugin
 
-This plugin packages the Areo-RGB Serena fork together with the JetBrains Index MCP workflow for Claude Code.
+This plugin exposes the Areo-RGB Serena fork as the single Claude Code MCP server. Selected Serena search/navigation tools use JetBrains Index MCP internally, but Claude does not connect to Index MCP directly.
 
 ## Install from GitHub
 
@@ -24,20 +24,27 @@ To refresh the marketplace later:
 claude plugin marketplace update areo-rgb
 ```
 
-Then use Claude Code's plugin manager to update/reinstall `serena-index-mcp` when a newer plugin version is published.
-
 ## What it adds
 
-- Serena fork MCP server (`serena-index`)
-- JetBrains Index MCP HTTP server (`index-mcp`)
-- Index-MCP-first reminder/auto-approval/reset hooks
+- Serena fork MCP server (`serena-index`) as the only Claude-visible MCP
+- Serena search wrappers backed internally by JetBrains Index MCP
 - Concise SessionStart guidance that avoids the redundant `initial_instructions` startup round trip
-- `/serena-index-mcp:workflow` skill explaining tool selection and troubleshooting
+- `/serena-index-mcp:workflow` skill explaining the single-MCP workflow and troubleshooting
+
+## Existing Index-backed Serena wrappers
+
+- `find_symbol` -> `ide_find_symbol`
+- `get_symbols_overview` -> `ide_file_structure`
+- `find_referencing_symbols` -> `ide_find_references`
+- `find_file` -> `ide_find_file`
+- `search_for_pattern` -> `ide_search_text`
+
+Additional Index MCP capabilities can be wrapped by Serena later without adding a second Claude-visible MCP connection.
 
 ## Requirements
 
 1. Claude Code
-2. JetBrains Index MCP running at:
+2. JetBrains Index MCP running locally at:
    `http://127.0.0.1:29170/index-mcp/streamable-http`
 3. Either:
    - local fork checkout at `/home/paul/serena-main` with `.venv/bin/serena`, or
@@ -67,8 +74,4 @@ Use `/plugin` to inspect plugin/MCP errors and `/reload-plugins` after changing 
 
 ## Tool strategy
 
-Use Index MCP `ide_*` tools first for source-code discovery and navigation. Use Serena for complementary project/editing workflows or when Index MCP cannot express the operation. Raw Read/Glob/Grep should be fallbacks for unindexed/generated/malformed files or genuinely text-oriented work.
-
-## Notes
-
-The plugin connects to the Index MCP HTTP endpoint; it does not launch the JetBrains IDE/plugin process itself. The Serena launcher and hook launcher prefer the local checkout for speed and fall back to the GitHub fork through `uvx` for portability.
+Use Serena's Index-backed discovery wrappers first for source-code discovery and navigation. Use Serena's native symbolic/editing tools for functionality that has not yet been wrapped through Index MCP. Raw Read/Glob/Grep remain fallbacks.
