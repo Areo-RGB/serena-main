@@ -1,0 +1,23 @@
+{
+  "name": "serena-index-mcp",
+  "version": "0.1.0",
+  "description": "Claude Code integration for the Areo-RGB Serena fork plus JetBrains Index MCP, with Index-MCP-first hooks and workflow guidance.",
+  "author": {
+    "name": "Areo-RGB"
+  },
+  "homepage": "https://github.com/Areo-RGB/serena-main",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Areo-RGB/serena-main.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "serena",
+    "index-mcp",
+    "jetbrains",
+    "claude-code",
+    "code-intelligence"
+  ],
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json"
+}
