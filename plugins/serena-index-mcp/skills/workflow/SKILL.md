@@ -31,9 +31,8 @@ Do **not** call Serena `initial_instructions` as a routine Claude Code startup a
 ## Runtime expectations
 
 - Claude-visible MCP: Serena only.
+- Serena is launched from `git+https://github.com/Areo-RGB/serena-main` through `uvx -p 3.13`.
+- No local Serena checkout or virtualenv is required.
 - Serena's existing Index-backed wrappers expect the JetBrains Index MCP HTTP endpoint at `http://127.0.0.1:29170/index-mcp/streamable-http`.
-- Preferred local Serena checkout: `/home/paul/serena-main`.
-- Override the local checkout with `SERENA_FORK_HOME=/path/to/serena-main`.
-- If no local virtualenv executable exists, the plugin falls back to `uvx --from git+https://github.com/Areo-RGB/serena-main.git`.
 
 If the internal Index MCP backend is unavailable, say so clearly and use Serena-native or built-in fallbacks where possible rather than repeatedly retrying the same failed wrapper call.
