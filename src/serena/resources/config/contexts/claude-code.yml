@@ -38,12 +38,27 @@ prompt: |
 
 excluded_tools:
   - initial_instructions
+
+  # Claude built-ins or direct Index MCP equivalents
   - create_text_file
   - read_file
   - execute_shell_command
-  - find_file
   - list_dir
+  - find_file
   - search_for_pattern
+
+  # Index MCP code-intelligence equivalents
+  - find_symbol
+  - get_symbols_overview
+  - find_referencing_symbols
+  - find_declaration
+  - find_implementations
+
+  # Index MCP refactor/member-edit equivalents
+  - rename_symbol
+  - replace_symbol_body
+  - insert_before_symbol
+  - insert_after_symbol
 
 tool_description_overrides: {}
 
