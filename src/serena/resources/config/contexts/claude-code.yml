@@ -6,14 +6,15 @@ prompt: |
   route internally through the JetBrains Index MCP backend, so Claude should call the Serena tools rather
   than a separate direct `ide_*` MCP server.
 
-  Prefer these Serena tools for code discovery:
+  Prefer these Serena tools for code discovery and IDE navigation:
   - file structure / outline       -> get_symbols_overview
   - symbol search                  -> find_symbol
   - references/usages              -> find_referencing_symbols
   - file-name search               -> find_file
   - text/regex search              -> search_for_pattern
+  - open file in JetBrains IDE     -> open_file
 
-  These five tools are backed by Index MCP internally. Use Serena's remaining symbolic/editing tools
+  These tools are backed by Index MCP internally. Use Serena's remaining symbolic/editing tools
   (`find_declaration`, `find_implementations`, `rename_symbol`, `replace_symbol_body`,
   `insert_before_symbol`, `insert_after_symbol`, `replace_content`, etc.) as the current fallback layer
   until equivalent Index MCP wrappers are added to Serena.
@@ -22,6 +23,7 @@ prompt: |
   - Read/Glob/Grep are fallbacks, not the default discovery path.
   - Before raw Grep, ask whether `find_symbol`, `find_referencing_symbols`, or `search_for_pattern` fits.
   - Before reading a whole source file, try `get_symbols_overview`, then navigate to only the relevant symbol.
+  - Use `open_file` when the user asks to open/navigate to a source file in the JetBrains IDE.
   - Prefer Serena's symbolic editing/refactoring tools over raw built-in Edit when they directly represent the change.
 
   Do not call `initial_instructions` as a routine startup step; this context already provides the relevant workflow guidance.
