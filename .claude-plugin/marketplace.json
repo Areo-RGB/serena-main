@@ -1,0 +1,17 @@
+{
+  "name": "areo-rgb",
+  "owner": {
+    "name": "Areo-RGB"
+  },
+  "plugins": [
+    {
+      "name": "serena-index-mcp",
+      "source": "./plugins/serena-index-mcp",
+      "description": "Claude Code integration for the Areo-RGB Serena fork plus JetBrains Index MCP, with Index-MCP-first hooks and workflow guidance.",
+      "version": "0.1.1",
+      "author": {
+        "name": "Areo-RGB"
+      }
+    }
+  ]
+}
