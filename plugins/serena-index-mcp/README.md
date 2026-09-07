@@ -2,6 +2,30 @@
 
 This plugin packages the Areo-RGB Serena fork together with the JetBrains Index MCP workflow for Claude Code.
 
+## Install from GitHub
+
+Add this repository as a Claude Code marketplace:
+
+```text
+/plugin marketplace add Areo-RGB/serena-main
+```
+
+Then install the plugin:
+
+```text
+/plugin install serena-index-mcp@areo-rgb
+```
+
+After installation, restart Claude Code or run `/reload-plugins` when prompted.
+
+To refresh the marketplace later:
+
+```bash
+claude plugin marketplace update areo-rgb
+```
+
+Then use Claude Code's plugin manager to update/reinstall `serena-index-mcp` when a newer plugin version is published.
+
 ## What it adds
 
 - Serena fork MCP server (`serena-index`)
