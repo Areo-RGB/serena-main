@@ -39,10 +39,13 @@ claude plugin marketplace update areo-rgb
 - `find_file` -> `ide_find_file`
 - `search_for_pattern` -> `ide_search_text`
 - `open_file` -> `ide_open_file`
+- `open_project` -> `ide_open_project`
 
 `open_file(relative_path, line?, column?)` opens the file in JetBrains. Serena accepts 0-based line/column values and converts them to the Index MCP tool's 1-based coordinates.
 
-`ide_open_file` is disabled by default in Index MCP. Enable it in **Settings > Tools > Index MCP Server > Exposed Tools**.
+`open_project(path, auto_link=false, timeout_seconds=600)` opens another absolute filesystem project path in JetBrains and waits for indexing. It does not automatically switch Serena's active project; call `activate_project` afterward if Serena should work on the newly opened project.
+
+`ide_open_file` and `ide_open_project` are opt-in/disabled-by-default in Index MCP. Enable them in **Settings > Tools > Index MCP Server > Exposed Tools**. `ide_open_project` also requires at least one JetBrains project to already be open as the request context.
 
 Additional Index MCP capabilities can be wrapped by Serena later without adding a second Claude-visible MCP connection.
 
@@ -79,4 +82,4 @@ Use `/plugin` to inspect plugin/MCP errors and `/reload-plugins` after changing 
 
 ## Tool strategy
 
-Use Serena's Index-backed discovery/navigation wrappers first for source-code discovery and navigation. Use `open_file` when the user wants a source file opened in JetBrains. Use Serena's native symbolic/editing tools for functionality that has not yet been wrapped through Index MCP. Raw Read/Glob/Grep remain fallbacks.
+Use Serena's Index-backed discovery/navigation wrappers first for source-code discovery and navigation. Use `open_file` when the user wants a source file opened in JetBrains and `open_project` when they want another project opened in JetBrains. Use Serena's native symbolic/editing tools for functionality that has not yet been wrapped through Index MCP. Raw Read/Glob/Grep remain fallbacks.
