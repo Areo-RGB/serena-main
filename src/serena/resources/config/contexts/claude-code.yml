@@ -33,7 +33,11 @@ prompt: |
   Do not fall back to raw tools merely because the path is known or because one raw call appears shorter.
   Fall back when Index MCP is unavailable, the target is not indexed/parseable, or the task genuinely needs raw text.
 
+  This Claude Code integration already provides the relevant Serena/Index MCP workflow guidance.
+  Do not call `initial_instructions` as a routine startup step.
+
 excluded_tools:
+  - initial_instructions
   - create_text_file
   - read_file
   - execute_shell_command
