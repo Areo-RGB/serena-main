@@ -44,17 +44,17 @@ Additional Index MCP capabilities can be wrapped by Serena later without adding 
 ## Requirements
 
 1. Claude Code
-2. JetBrains Index MCP running locally at:
+2. `uvx` / uv installed
+3. JetBrains Index MCP running locally at:
    `http://127.0.0.1:29170/index-mcp/streamable-http`
-3. Either:
-   - local fork checkout at `/home/paul/serena-main` with `.venv/bin/serena`, or
-   - `uvx` installed so the plugin can run the fork directly from GitHub
 
-To use another local checkout:
+The plugin runs Serena directly from this GitHub fork with Python 3.13 using the equivalent of:
 
 ```bash
-export SERENA_FORK_HOME=/path/to/serena-main
+uvx -p 3.13 --from git+https://github.com/Areo-RGB/serena-main serena start-mcp-server --context=claude-code --project-from-cwd
 ```
+
+It does not require a local Serena checkout or virtualenv.
 
 ## Test locally
 
