@@ -1,43 +1,44 @@
-description: Claude Code (single Serena MCP with Index MCP-backed search wrappers)
+description: Claude Code (lean Serena MCP with Index MCP-backed discovery/navigation)
 prompt: |
   You are running in Claude Code, where built-in file, shell, and line-edit tools are available.
 
-  This plugin exposes Serena as the single MCP server. In this fork, Serena's primary discovery tools
-  route internally through the JetBrains Index MCP backend, so Claude should call the Serena tools rather
-  than a separate direct `ide_*` MCP server.
+  This plugin exposes Serena as the single coding MCP. Serena's discovery/navigation wrappers call
+  JetBrains Index MCP internally; there is no separate direct `ide_*` MCP server for Claude to use.
 
-  Prefer these Serena tools for code discovery and IDE navigation:
+  Prefer these Serena tools:
   - file structure / outline       -> get_symbols_overview
   - symbol search                  -> find_symbol
   - references/usages              -> find_referencing_symbols
   - file-name search               -> find_file
   - text/regex search              -> search_for_pattern
   - open file in JetBrains IDE     -> open_file
-  - open project in JetBrains IDE  -> open_project
+  - open another JetBrains project -> open_project
 
-  These tools are backed by Index MCP internally. Use Serena's remaining symbolic/editing tools
-  (`find_declaration`, `find_implementations`, `rename_symbol`, `replace_symbol_body`,
-  `insert_before_symbol`, `insert_after_symbol`, `replace_content`, etc.) as the current fallback layer
-  until equivalent Index MCP wrappers are added to Serena.
+  For edits, use the small Serena editing surface exposed by this context:
+  `replace_symbol_body`, `insert_before_symbol`, `insert_after_symbol`, `replace_content`, and `replace_in_files`.
 
-  For code files:
-  - Read/Glob/Grep are fallbacks, not the default discovery path.
-  - Before raw Grep, ask whether `find_symbol`, `find_referencing_symbols`, or `search_for_pattern` fits.
-  - Before reading a whole source file, try `get_symbols_overview`, then navigate to only the relevant symbol.
-  - Use `open_file` when the user asks to open/navigate to a source file in the JetBrains IDE.
-  - Use `open_project` when the user asks to open another filesystem project in the JetBrains IDE.
-  - Prefer Serena's symbolic editing/refactoring tools over raw built-in Edit when they directly represent the change.
+  The Serena MCP is explicitly launched with the LSP language backend. Do not use or look for
+  `jet_brains_*` tools from Serena's separate JetBrains-plugin backend; that backend is not part of this plugin.
 
-  Do not call `initial_instructions` as a routine startup step; this context already provides the relevant workflow guidance.
+  Read/Glob/Grep and normal line edits are available through Claude Code itself and are fallbacks where appropriate.
+  Do not call `initial_instructions` as a routine startup step; this context already provides the relevant guidance.
 
-excluded_tools:
-  - initial_instructions
-
-  # Claude Code already provides these directly.
-  - create_text_file
-  - read_file
-  - execute_shell_command
-  - list_dir
+# Keep the agent-facing MCP surface deliberately small. Client-native file/shell tools and Serena diagnostics,
+# memories, cross-project query helpers, and the separate Serena JetBrains-plugin backend are intentionally omitted.
+fixed_tools:
+  - activate_project
+  - find_file
+  - get_symbols_overview
+  - find_symbol
+  - find_referencing_symbols
+  - search_for_pattern
+  - open_file
+  - open_project
+  - replace_symbol_body
+  - insert_before_symbol
+  - insert_after_symbol
+  - replace_content
+  - replace_in_files
 
 tool_description_overrides: {}
 
