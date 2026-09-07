@@ -2,12 +2,12 @@
 import json
 
 message = (
-    "Use JetBrains Index MCP `ide_*` tools as the primary code-intelligence/navigation layer. "
-    "Prefer `ide_file_structure`, `ide_find_symbol`, `ide_find_definition`, `ide_find_references`, "
-    "`ide_find_file`, and `ide_search_text` before raw Read/Glob/Grep on source code. "
-    "Use the Serena fork for complementary project/editing workflows when Index MCP does not directly fit. "
-    "Do not call Serena `initial_instructions` as a routine startup step; this plugin already provides the workflow guidance. "
-    "The Index MCP HTTP endpoint is expected at http://127.0.0.1:29170/index-mcp/streamable-http."
+    "Use the Serena MCP as the single coding MCP for this plugin. "
+    "For discovery, prefer Serena `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, "
+    "`find_file`, and `search_for_pattern`; in this fork those tools route through JetBrains Index MCP internally. "
+    "Use Serena's remaining symbolic/editing tools for operations that do not yet have Index MCP wrappers. "
+    "Do not look for or call a separate direct `ide_*` MCP server, and do not call Serena `initial_instructions` "
+    "as a routine startup step."
 )
 
 print(
