@@ -6,14 +6,14 @@ LanguageBackend.INDEX_MCP is active.
 """
 
 import copy
+import json
 import os
 from collections import Counter, defaultdict
-from collections.abc import Sequence
 from fnmatch import fnmatch
 from typing import Any
 
 from serena.index_mcp_client import IndexMcpClient, find_structure_node, parse_file_structure_tree
-from serena.symbol import LanguageServerSymbol, LanguageServerSymbolDictGrouper
+from serena.symbol import LanguageServerSymbolDictGrouper
 from serena.tools.tools_base import Tool, ToolMarkerOptional, ToolMarkerSymbolicRead
 from serena.util.text_utils import GlobMatcher
 from solidlsp.ls_types import SymbolKind
