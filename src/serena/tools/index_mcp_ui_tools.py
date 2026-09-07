@@ -38,3 +38,32 @@ class OpenFileTool(Tool):
         if isinstance(result, dict):
             return self._to_json(result)
         return result
+
+
+class OpenProjectTool(Tool):
+    """Opens another project in the JetBrains IDE through Index MCP."""
+
+    def apply(self, path: str, auto_link: bool = False, timeout_seconds: int = 600) -> str:
+        """
+        Open a project by absolute filesystem path and wait for JetBrains indexing.
+
+        The underlying ``ide_open_project`` tool requires an already-open JetBrains project as
+        the MCP request context. Serena's active project is supplied as that context automatically.
+
+        :param path: absolute filesystem path of the project directory to open
+        :param auto_link: whether to automatically link an unlinked Maven/Gradle build after opening
+        :param timeout_seconds: maximum seconds to wait for opening and indexing; must be positive
+        :return: Index MCP's open-project result
+        """
+        if timeout_seconds <= 0:
+            raise ValueError(f"timeout_seconds must be > 0, got {timeout_seconds}")
+
+        arguments: dict[str, str | int | bool] = {
+            "path": path,
+            "autoLink": auto_link,
+            "timeoutSeconds": timeout_seconds,
+        }
+        result = IndexMcpClient(self.get_project_root()).call_tool("ide_open_project", arguments)
+        if isinstance(result, dict):
+            return self._to_json(result)
+        return result
