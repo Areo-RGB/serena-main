@@ -288,15 +288,16 @@ class FileSystemCodeEditor(CodeEditor[Symbol]):
             self._contents = contents
 
         def delete_text_between_positions(self, start_pos: PositionInFile, end_pos: PositionInFile) -> None:
-            stepper = TextStepper(self._contents)
-            start_offset = stepper.get_offset(start_pos.line, start_pos.col)
-            end_offset = stepper.get_offset(end_pos.line, end_pos.col)
-            self._contents = self._contents[:start_offset] + self._contents[end_offset:]
+            start_stepper = TextStepper(self._contents)
+            start_stepper.step_to(start_pos.line, start_pos.col)
+            end_stepper = TextStepper(self._contents)
+            end_stepper.step_to(end_pos.line, end_pos.col)
+            self._contents = self._contents[: start_stepper.idx] + self._contents[end_stepper.idx :]
 
         def insert_text_at_position(self, pos: PositionInFile, text: str) -> None:
             stepper = TextStepper(self._contents)
-            offset = stepper.get_offset(pos.line, pos.col)
-            self._contents = self._contents[:offset] + text + self._contents[offset:]
+            stepper.step_to(pos.line, pos.col)
+            self._contents = self._contents[: stepper.idx] + text + self._contents[stepper.idx :]
 
     def __init__(self, project: Project) -> None:
         self._project = project
