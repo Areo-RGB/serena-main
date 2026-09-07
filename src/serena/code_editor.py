@@ -272,6 +272,47 @@ class CodeEditor(Generic[TSymbol], ABC):
         pass
 
 
+class FileSystemCodeEditor(CodeEditor[Symbol]):
+    """Filesystem-only editor used when code intelligence is provided by Index MCP."""
+
+    class EditedFile(CodeEditor.EditedFile):
+        def __init__(self, project_root: str, relative_path: str, encoding: str) -> None:
+            super().__init__(relative_path)
+            self._path = os.path.join(project_root, relative_path)
+            self._contents = open(self._path, encoding=encoding).read()
+
+        def get_contents(self) -> str:
+            return self._contents
+
+        def set_contents(self, contents: str) -> None:
+            self._contents = contents
+
+        def delete_text_between_positions(self, start_pos: PositionInFile, end_pos: PositionInFile) -> None:
+            stepper = TextStepper(self._contents)
+            start_offset = stepper.get_offset(start_pos.line, start_pos.col)
+            end_offset = stepper.get_offset(end_pos.line, end_pos.col)
+            self._contents = self._contents[:start_offset] + self._contents[end_offset:]
+
+        def insert_text_at_position(self, pos: PositionInFile, text: str) -> None:
+            stepper = TextStepper(self._contents)
+            offset = stepper.get_offset(pos.line, pos.col)
+            self._contents = self._contents[:offset] + text + self._contents[offset:]
+
+    def __init__(self, project: Project) -> None:
+        self._project = project
+        super().__init__(project)
+
+    @contextmanager
+    def _open_file_context(self, relative_path: str) -> Iterator["CodeEditor.EditedFile"]:
+        yield self.EditedFile(self.project_root, relative_path, self.encoding)
+
+    def _find_unique_symbol(self, name_path: str, relative_file_path: str) -> Symbol:
+        raise ValueError("Symbolic editing is not available through the Index MCP backend yet.")
+
+    def rename_symbol(self, name_path: str, relative_path: str, new_name: str) -> str:
+        raise ValueError("Symbol rename is not available through the Index MCP backend yet.")
+
+
 class LanguageServerCodeEditor(CodeEditor[LanguageServerSymbol]):
     def __init__(self, symbol_retriever: LanguageServerSymbolRetriever):
         super().__init__(project=symbol_retriever.project)
