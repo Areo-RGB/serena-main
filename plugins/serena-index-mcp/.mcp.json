@@ -1,9 +1,16 @@
 {
   "mcpServers": {
     "serena-index": {
-      "command": "bash",
+      "command": "uvx",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/scripts/run-serena.sh"
+        "-p",
+        "3.13",
+        "--from",
+        "git+https://github.com/Areo-RGB/serena-main",
+        "serena",
+        "start-mcp-server",
+        "--context=claude-code",
+        "--project-from-cwd"
       ]
     }
   }
