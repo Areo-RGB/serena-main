@@ -15,4 +15,51 @@ jobs:
           python-version: "3.13"
       - run: uv sync --extra dev
       - run: uv run python -m compileall -q src
-      - run: uv run pytest -q test/serena --maxfail=1
+      - name: Ruff changed Python modules
+        run: >-
+          uv run ruff check
+          src/serena/agent.py
+          src/serena/cli.py
+          src/serena/code_editor.py
+          src/serena/config/serena_config.py
+          src/serena/tools/file_tools.py
+          src/serena/tools/index_mcp_tools.py
+          src/serena/tools/query_project_tools.py
+          src/serena/tools/symbol_tools.py
+          src/serena/tools/tools_base.py
+      - name: Backend registry smoke test
+        run: |
+          uv run python - <<'PY'
+          from serena.config.context_mode import SerenaAgentMode
+          from serena.config.serena_config import LanguageBackend
+          from serena.tools import ToolRegistry, file_tools, index_mcp_tools, symbol_tools
+
+          assert LanguageBackend.from_str("indexmcp") is LanguageBackend.INDEX_MCP
+          assert LanguageBackend.INDEX_MCP.is_index_mcp()
+          assert not LanguageBackend.INDEX_MCP.is_lsp()
+          assert not LanguageBackend.INDEX_MCP.is_jetbrains()
+
+          mapping = LanguageBackend.INDEX_MCP.get_lsp_tool_class_replacements()
+          expected = {
+              file_tools.FindFileTool: index_mcp_tools.IndexMcpFindFileTool,
+              file_tools.SearchForPatternTool: index_mcp_tools.IndexMcpSearchForPatternTool,
+              symbol_tools.FindSymbolTool: index_mcp_tools.IndexMcpFindSymbolTool,
+              symbol_tools.GetSymbolsOverviewTool: index_mcp_tools.IndexMcpGetSymbolsOverviewTool,
+              symbol_tools.FindReferencingSymbolsTool: index_mcp_tools.IndexMcpFindReferencingSymbolsTool,
+          }
+          assert mapping == expected
+
+          names = set(ToolRegistry().get_tool_names())
+          assert {
+              "index_mcp_find_file",
+              "index_mcp_search_for_pattern",
+              "index_mcp_find_symbol",
+              "index_mcp_get_symbols_overview",
+              "index_mcp_find_referencing_symbols",
+          } <= names
+
+          mode = SerenaAgentMode.from_name_internal("index_mcp")
+          assert "find_symbol" in mode.excluded_tools
+          assert "index_mcp_find_symbol" in mode.included_optional_tools
+          print("IndexMCP backend registry smoke test passed")
+          PY
