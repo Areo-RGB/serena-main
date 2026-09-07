@@ -1,64 +1,39 @@
-description: Claude Code (Index MCP for code intelligence, Serena for complementary editing/project workflows)
+description: Claude Code (single Serena MCP with Index MCP-backed search wrappers)
 prompt: |
   You are running in Claude Code, where built-in file, shell, and line-edit tools are available.
 
-  For code discovery and navigation, Index MCP is the PRIMARY layer. Its `ide_*` tools use the
-  JetBrains project index/PSI and should be preferred over raw Read/Glob/Grep whenever they can
-  answer the question semantically.
+  This plugin exposes Serena as the single MCP server. In this fork, Serena's primary discovery tools
+  route internally through the JetBrains Index MCP backend, so Claude should call the Serena tools rather
+  than a separate direct `ide_*` MCP server.
 
-  Prefer these Index MCP tools:
-  - file structure / outline       -> ide_file_structure
-  - symbol search                  -> ide_find_symbol
-  - exact declaration/definition   -> ide_find_definition
-  - references/usages              -> ide_find_references
-  - file-name search               -> ide_find_file
-  - text/regex search              -> ide_search_text
-  - signature/docs at a position   -> ide_symbol_info
-  - implementations                -> ide_find_implementations
-  - caller/callee relationships    -> ide_call_hierarchy
-  - type inheritance               -> ide_type_hierarchy
+  Prefer these Serena tools for code discovery:
+  - file structure / outline       -> get_symbols_overview
+  - symbol search                  -> find_symbol
+  - references/usages              -> find_referencing_symbols
+  - file-name search               -> find_file
+  - text/regex search              -> search_for_pattern
 
-  Use Serena for complementary editing/refactoring/project workflows when an Index MCP edit tool
-  does not fit. Index MCP refactoring/editing tools (for example `ide_refactor_rename`,
-  `ide_replace_text_in_file`, `ide_edit_member`, `ide_replace_member`, `ide_insert_member`) should
-  be preferred when enabled and applicable because the IDE updates PSI/index state immediately.
+  These five tools are backed by Index MCP internally. Use Serena's remaining symbolic/editing tools
+  (`find_declaration`, `find_implementations`, `rename_symbol`, `replace_symbol_body`,
+  `insert_before_symbol`, `insert_after_symbol`, `replace_content`, etc.) as the current fallback layer
+  until equivalent Index MCP wrappers are added to Serena.
 
   For code files:
   - Read/Glob/Grep are fallbacks, not the default discovery path.
-  - Before raw Grep, ask whether `ide_find_symbol`, `ide_find_references`, or `ide_search_text` fits.
-  - Before reading a whole source file, try `ide_file_structure`, then navigate to only the relevant definition.
-  - Before a rename or structural refactor, prefer the corresponding Index MCP refactoring tool.
-  - If Index MCP cannot express the edit or the language/tool is unsupported, use Serena's editing tools.
+  - Before raw Grep, ask whether `find_symbol`, `find_referencing_symbols`, or `search_for_pattern` fits.
+  - Before reading a whole source file, try `get_symbols_overview`, then navigate to only the relevant symbol.
+  - Prefer Serena's symbolic editing/refactoring tools over raw built-in Edit when they directly represent the change.
 
-  Do not fall back to raw tools merely because the path is known or because one raw call appears shorter.
-  Fall back when Index MCP is unavailable, the target is not indexed/parseable, or the task genuinely needs raw text.
-
-  This Claude Code integration already provides the relevant Serena/Index MCP workflow guidance.
-  Do not call `initial_instructions` as a routine startup step.
+  Do not call `initial_instructions` as a routine startup step; this context already provides the relevant workflow guidance.
 
 excluded_tools:
   - initial_instructions
 
-  # Claude built-ins or direct Index MCP equivalents
+  # Claude Code already provides these directly.
   - create_text_file
   - read_file
   - execute_shell_command
   - list_dir
-  - find_file
-  - search_for_pattern
-
-  # Index MCP code-intelligence equivalents
-  - find_symbol
-  - get_symbols_overview
-  - find_referencing_symbols
-  - find_declaration
-  - find_implementations
-
-  # Index MCP refactor/member-edit equivalents
-  - rename_symbol
-  - replace_symbol_body
-  - insert_before_symbol
-  - insert_after_symbol
 
 tool_description_overrides: {}
 
