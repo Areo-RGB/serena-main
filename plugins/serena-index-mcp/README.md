@@ -27,7 +27,7 @@ claude plugin marketplace update areo-rgb
 ## What it adds
 
 - Serena fork MCP server (`serena-index`) as the only Claude-visible MCP
-- Serena search wrappers backed internally by JetBrains Index MCP
+- Serena search/navigation wrappers backed internally by JetBrains Index MCP
 - Concise SessionStart guidance that avoids the redundant `initial_instructions` startup round trip
 - `/serena-index-mcp:workflow` skill explaining the single-MCP workflow and troubleshooting
 
@@ -38,6 +38,11 @@ claude plugin marketplace update areo-rgb
 - `find_referencing_symbols` -> `ide_find_references`
 - `find_file` -> `ide_find_file`
 - `search_for_pattern` -> `ide_search_text`
+- `open_file` -> `ide_open_file`
+
+`open_file(relative_path, line?, column?)` opens the file in JetBrains. Serena accepts 0-based line/column values and converts them to the Index MCP tool's 1-based coordinates.
+
+`ide_open_file` is disabled by default in Index MCP. Enable it in **Settings > Tools > Index MCP Server > Exposed Tools**.
 
 Additional Index MCP capabilities can be wrapped by Serena later without adding a second Claude-visible MCP connection.
 
@@ -74,4 +79,4 @@ Use `/plugin` to inspect plugin/MCP errors and `/reload-plugins` after changing 
 
 ## Tool strategy
 
-Use Serena's Index-backed discovery wrappers first for source-code discovery and navigation. Use Serena's native symbolic/editing tools for functionality that has not yet been wrapped through Index MCP. Raw Read/Glob/Grep remain fallbacks.
+Use Serena's Index-backed discovery/navigation wrappers first for source-code discovery and navigation. Use `open_file` when the user wants a source file opened in JetBrains. Use Serena's native symbolic/editing tools for functionality that has not yet been wrapped through Index MCP. Raw Read/Glob/Grep remain fallbacks.
