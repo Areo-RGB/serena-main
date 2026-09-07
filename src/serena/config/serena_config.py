@@ -206,11 +206,6 @@ class LanguageBackend(Enum):
     Use the Serena plugin in your JetBrains IDE.
     (requires the plugin to be installed and the project being worked on to be open in your IDE)
     """
-    INDEX_MCP = "IndexMCP"
-    """
-    Use the JetBrains Index MCP server as Serena's code-intelligence backend.
-    The target JetBrains project must be open and the Index MCP server must be running.
-    """
 
     @staticmethod
     def from_str(backend_str: str) -> "LanguageBackend":
@@ -225,9 +220,6 @@ class LanguageBackend(Enum):
     def is_jetbrains(self) -> bool:
         return self == LanguageBackend.JETBRAINS
 
-    def is_index_mcp(self) -> bool:
-        return self == LanguageBackend.INDEX_MCP
-
     def get_lsp_tool_class_replacements(self) -> "dict[type[Tool], type[Tool]]":
         """
         :return: mapping from LSP tool classes to replacement tool classes (functional replacements)
@@ -239,23 +231,13 @@ class LanguageBackend(Enum):
                 from ..tools import jetbrains_tools, symbol_tools
 
                 return {
-                    symbol_tools.FindSymbolTool: jetbrains_tools.JetBrainsFindSymbolTool,
-                    symbol_tools.GetSymbolsOverviewTool: jetbrains_tools.JetBrainsGetSymbolsOverviewTool,
-                    symbol_tools.FindReferencingSymbolsTool: jetbrains_tools.JetBrainsFindReferencingSymbolsTool,
+                    # Search/navigation reads are intentionally NOT replaced here: FindSymbolTool,
+                    # GetSymbolsOverviewTool, and FindReferencingSymbolsTool now route through the
+                    # JetBrains Index MCP Streamable HTTP endpoint for every Serena language backend.
                     symbol_tools.FindImplementationsTool: jetbrains_tools.JetBrainsFindImplementationsTool,
                     symbol_tools.FindDeclarationTool: jetbrains_tools.JetBrainsFindDeclarationTool,
                     symbol_tools.RenameSymbolTool: jetbrains_tools.JetBrainsRenameTool,
                     symbol_tools.SafeDeleteSymbol: jetbrains_tools.JetBrainsSafeDeleteTool,
-                }
-            case LanguageBackend.INDEX_MCP:
-                from ..tools import file_tools, index_mcp_tools, symbol_tools
-
-                return {
-                    file_tools.FindFileTool: index_mcp_tools.IndexMcpFindFileTool,
-                    file_tools.SearchForPatternTool: index_mcp_tools.IndexMcpSearchForPatternTool,
-                    symbol_tools.FindSymbolTool: index_mcp_tools.IndexMcpFindSymbolTool,
-                    symbol_tools.GetSymbolsOverviewTool: index_mcp_tools.IndexMcpGetSymbolsOverviewTool,
-                    symbol_tools.FindReferencingSymbolsTool: index_mcp_tools.IndexMcpFindReferencingSymbolsTool,
                 }
             case _:
                 raise NotImplementedError()

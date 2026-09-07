@@ -12,6 +12,7 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import Literal
 
+from serena.index_mcp_client import IndexMcpClient
 from serena.tools import SUCCESS_RESULT, EditedFileContext, EditingToolWithDiagnostics, Tool, ToolMarkerOptional
 from serena.util.file_system import scan_directory
 from serena.util.text_utils import (
@@ -133,41 +134,36 @@ class ListDirTool(Tool):
 
 
 class FindFileTool(Tool):
-    """
-    Finds files in the given relative paths
-    """
+    """Finds files through the JetBrains Index MCP file index."""
 
     def apply(self, file_mask: str, relative_path: str) -> str:
         """
-        Finds files matching the given file mask within the given relative path
+        Finds files matching a filename/mask using ``ide_find_file`` and then applies Serena's
+        relative-path restriction locally.
 
-        :param file_mask: the filename or file mask (using the wildcards * or ?) to search for
-        :param relative_path: the relative path to the directory to search in; pass "." to scan the project root
-        :param skip_ignored_files: whether to skip ignored files/directories
-        :return: a JSON object with the list of matching files
+        :param file_mask: filename or wildcard mask (``*``/``?``) to search for
+        :param relative_path: directory to search under; pass ``.`` for the project root
+        :return: a JSON object containing matching project-relative file paths
         """
         self.project.validate_relative_path(relative_path)
+        client = IndexMcpClient(self.get_project_root())
+        page = client.call_paginated_tool("ide_find_file", {"query": file_mask}, "files")
 
-        is_ignored_path_fn = self.project.get_is_ignored_path_fn(relative_path, skip_ignored_paths=False)
-        dir_to_scan = os.path.join(self.get_project_root(), relative_path)
+        base = relative_path.replace("\\", "/").strip("/")
+        if base == ".":
+            base = ""
+        files: list[str] = []
+        for match in page.items:
+            path = str(match.get("path") or "").replace("\\", "/").strip("/")
+            name = str(match.get("name") or os.path.basename(path))
+            if base and not (path == base or path.startswith(base + "/")):
+                continue
+            # ide_find_file is fuzzy by design; retain Serena's mask semantics on the result set.
+            if not fnmatch(name, file_mask):
+                continue
+            files.append(path)
 
-        # find the files by ignoring everything that doesn't match
-        def is_ignored_file(abs_path: str) -> bool:
-            if is_ignored_path_fn(abs_path):
-                return True
-            filename = os.path.basename(abs_path)
-            return not fnmatch(filename, file_mask)
-
-        _dirs, files = scan_directory(
-            path=dir_to_scan,
-            recursive=True,
-            is_ignored_dir=is_ignored_path_fn,
-            is_ignored_file=is_ignored_file,
-            relative_to=self.get_project_root(),
-        )
-
-        result = self._to_json({"files": files})
-        return result
+        return self._to_json({"files": sorted(dict.fromkeys(files))})
 
 
 class ReplaceContentTool(EditingToolWithDiagnostics):
@@ -555,58 +551,94 @@ class SearchForPatternTool(Tool):
         max_answer_chars: int = -1,
     ) -> str:
         """
-        Searches for a regex pattern across project files, returning whole matched lines (plus optional context).
-        Prefer symbolic operations if you know which symbols you are looking for!
+        Searches project text through JetBrains ``ide_search_text`` and returns Serena's familiar
+        per-file match listing. The query is treated as a regular expression, matching Serena's API.
 
-        :param substring_pattern: regular expression to search for.
-        :param context_lines_before: number of context lines to include before each match.
-        :param context_lines_after: number of context lines to include after each match.
-        :param paths_include_glob: optional glob (relative to project root, e.g. ``"src/**/*.ts"``) restricting which files are searched.
-        :param paths_exclude_glob: optional glob to exclude files; takes precedence over `paths_include_glob`.
-        :param relative_path: restricts the search to this file or subdirectory of the project root
-        :param restrict_search_to_code_files: whether to search only (non-ignored) files containing analyzable code symbols
-            (useful when looking for class/method definitions); otherwise also search non-code files.
-        :param skip_ignored_files: whether to skip ignored sub-paths (default: True)
-        :param multiline: whether to apply multi-line matching (default: True), enabling the flags re.DOTALL and re.MULTILINE
-        :param max_answer_chars: if the output exceeds this many characters, a progressively shortened summary is returned instead.
-            ``-1`` uses the configured default.
-        :return: A mapping from file paths to matched consecutive lines (0-based line numbers).
+        :param substring_pattern: regular expression to search for
+        :param context_lines_before: local context lines to add before each indexed match
+        :param context_lines_after: local context lines to add after each indexed match
+        :param paths_include_glob: optional project-relative include glob
+        :param paths_exclude_glob: optional project-relative exclusion glob
+        :param relative_path: optional file/subdirectory restriction
+        :param restrict_search_to_code_files: if true, discard hits outside Serena-detected source files
+        :param skip_ignored_files: if true, discard hits Serena considers ignored
+        :param multiline: when true, add Java-regex multiline/DOTALL flags before sending the query to IntelliJ
+        :param max_answer_chars: maximum result length; -1 uses Serena's configured default
+        :return: mapping from file paths to matched lines/context, with 0-based line numbers
         """
         relative_path = relative_path.strip()
         if relative_path:
             self.project.validate_relative_path(relative_path)
 
-        matches = self.project.search_project_files_for_pattern(
-            pattern=substring_pattern,
-            relative_path=relative_path,
-            context_lines_before=context_lines_before,
-            context_lines_after=context_lines_after,
-            paths_include_glob=paths_include_glob.strip(),
-            paths_exclude_glob=paths_exclude_glob.strip(),
-            multiline=multiline,
-            code_files_only=restrict_search_to_code_files,
-            skip_ignored_files=skip_ignored_files,
+        paths: list[str] = []
+        include_glob = paths_include_glob.strip()
+        exclude_glob = paths_exclude_glob.strip()
+        include_glob_matcher = GlobMatcher(include_glob) if include_glob else None
+        exclude_glob_matcher = GlobMatcher(exclude_glob) if exclude_glob else None
+        if include_glob:
+            paths.append(include_glob)
+        elif relative_path and relative_path != ".":
+            paths.append(relative_path.replace("\\", "/"))
+        if exclude_glob:
+            paths.append("!" + exclude_glob.lstrip("!"))
+
+        indexed_pattern = f"(?ms){substring_pattern}" if multiline else substring_pattern
+        args: dict[str, object] = {
+            "query": indexed_pattern,
+            "regex": True,
+            "caseSensitive": True,
+            "wholeWord": False,
+        }
+        if paths:
+            args["paths"] = paths
+
+        client = IndexMcpClient(self.get_project_root())
+        page = client.call_paginated_tool("ide_search_text", args, "matches")
+
+        base = relative_path.replace("\\", "/").strip("/")
+        if base == ".":
+            base = ""
+        source_files = (
+            {p.replace("\\", "/") for p in self.project.gather_source_files(relative_path or "")}
+            if restrict_search_to_code_files
+            else None
         )
 
-        # group matches by file
         file_to_matches: dict[str, list[str]] = defaultdict(list)
-        for match in matches:
-            assert match.source_file_path is not None
-            file_to_matches[match.source_file_path].append(match.to_display_string())
-
-        # capture lightweight match data for shortening before serialization
         match_lines_by_file: dict[str, list[dict[str, int | str]]] = defaultdict(list)
-        for match in matches:
-            assert match.source_file_path is not None
-            first = match.matched_lines[0]
-            match_lines_by_file[match.source_file_path].append({"line": first.line_number, "text": first.line_content.strip()})
+        for match in page.items:
+            path = str(match.get("file") or "").replace("\\", "/").strip("/")
+            if base and not (path == base or path.startswith(base + "/")):
+                continue
+            if include_glob_matcher is not None and not include_glob_matcher.matches(path):
+                continue
+            if exclude_glob_matcher is not None and exclude_glob_matcher.matches(path):
+                continue
+            if skip_ignored_files and self.project.is_ignored_path(path):
+                continue
+            if source_files is not None and path not in source_files:
+                continue
 
-        # shortened result closures, from least to most aggressive shortening
+            line_0 = max(0, int(match.get("line") or 1) - 1)
+            line_text = str(match.get("context") or "")
+            if context_lines_before or context_lines_after:
+                try:
+                    rendered = self.project.retrieve_content_around_line(
+                        relative_file_path=path,
+                        line=line_0,
+                        context_lines_before=context_lines_before,
+                        context_lines_after=context_lines_after,
+                    ).to_display_string()
+                except Exception:
+                    rendered = f"{line_0}: {line_text}"
+            else:
+                rendered = f"{line_0}: {line_text}"
+            file_to_matches[path].append(rendered)
+            match_lines_by_file[path].append({"line": line_0, "text": line_text.strip()})
+
         _TEXT_TRUNCATE = 60
 
         def render_first_lines(truncate: bool) -> str:
-            """Render each match's first line, either in full or truncated to a fixed length."""
-
             def entry_text(text: str) -> str:
                 if truncate and len(text) > _TEXT_TRUNCATE:
                     return text[:_TEXT_TRUNCATE] + "..."
@@ -616,25 +648,20 @@ class SearchForPatternTool(Tool):
                 path: [{"line": m["line"], "text": entry_text(str(m["text"]))} for m in lines]
                 for path, lines in match_lines_by_file.items()
             }
-            if truncate:
-                header = (
-                    f"Matched lines (text over {_TEXT_TRUNCATE} chars is truncated, marked with a trailing '...'); "
-                    "use read_file with the line numbers for full content:"
-                )
-            else:
-                header = "Matched lines per file; use read_file with the line numbers for surrounding context:"
+            header = (
+                f"Matched lines (text over {_TEXT_TRUNCATE} chars is truncated); use read_file for full content:"
+                if truncate
+                else "Matched lines per file; use read_file with the line numbers for surrounding context:"
+            )
             return f"{header}\n{self._to_json(compact)}"
 
         def make_first_lines_full() -> str:
-            """Match locations with each match's full first line."""
-            return render_first_lines(truncate=False)
+            return render_first_lines(False)
 
         def make_first_lines_truncated() -> str:
-            """Match locations with each match's first line truncated to a fixed length."""
-            return render_first_lines(truncate=True)
+            return render_first_lines(True)
 
         def make_line_numbers_only() -> str:
-            """Match locations as bare line numbers (no text)."""
             numbers = {path: [m["line"] for m in lines] for path, lines in match_lines_by_file.items()}
             return f"Match lines per file:\n{self._to_json(numbers)}"
 
@@ -643,7 +670,8 @@ class SearchForPatternTool(Tool):
             return f"Match counts per file:\n{self._to_json(counts)}"
 
         def make_summary() -> str:
-            return f"Found {len(matches)} matches in {len(match_lines_by_file)} files."
+            suffix = " (truncated by Index MCP pagination ceiling)" if page.truncated else ""
+            return f"Found {sum(len(v) for v in match_lines_by_file.values())} matches in {len(match_lines_by_file)} files{suffix}."
 
         result = self._to_json(file_to_matches)
         return self._limit_length(
@@ -658,7 +686,5 @@ class SearchForPatternTool(Tool):
             ],
         )
 
-    """
-    Performs a search for a pattern in the project.
-    """
+    """Performs a search for a pattern in the project via Index MCP."""
 

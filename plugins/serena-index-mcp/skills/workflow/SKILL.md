@@ -12,11 +12,11 @@ JetBrains Index MCP remains an internal backend used by selected Serena tools. C
 
 Prefer these Serena tools before raw Read/Glob/Grep:
 
-- file outline: `index_mcp_get_symbols_overview` -> internal `ide_file_structure`
-- symbol lookup: `index_mcp_find_symbol` -> internal `ide_find_symbol`
-- references/usages: `index_mcp_find_referencing_symbols` -> internal `ide_find_references`
-- file-name search: `index_mcp_find_file` -> internal `ide_find_file`
-- text/regex search: `index_mcp_search_for_pattern` -> internal `ide_search_text`
+- file outline: `get_symbols_overview` -> internal `ide_file_structure`
+- symbol lookup: `find_symbol` -> internal `ide_find_symbol`
+- references/usages: `find_referencing_symbols` -> internal `ide_find_references`
+- file-name search: `find_file` -> internal `ide_find_file`
+- text/regex search: `search_for_pattern` -> internal `ide_search_text`
 
 ## Other Serena tools
 

@@ -61,15 +61,13 @@ class Component(ABC):
         return self.agent.get_active_project_or_raise()
 
     def create_code_editor(self) -> "CodeEditor":
-        from ..code_editor import FileSystemCodeEditor, JetBrainsCodeEditor
+        from ..code_editor import JetBrainsCodeEditor
 
         match self.agent.get_language_backend():
             case LanguageBackend.LSP:
                 return self.create_ls_code_editor()
             case LanguageBackend.JETBRAINS:
                 return JetBrainsCodeEditor(project=self.project)
-            case LanguageBackend.INDEX_MCP:
-                return FileSystemCodeEditor(project=self.project)
             case _:
                 raise ValueError
 

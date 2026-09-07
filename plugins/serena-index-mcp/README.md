@@ -31,13 +31,13 @@ claude plugin marketplace update areo-rgb
 - Concise SessionStart guidance that avoids the redundant `initial_instructions` startup round trip
 - `/serena-index-mcp:workflow` skill explaining the single-MCP workflow and troubleshooting
 
-## IndexMCP backend tools
+## Existing Index-backed Serena wrappers
 
-- `index_mcp_find_symbol` -> `ide_find_symbol`
-- `index_mcp_get_symbols_overview` -> `ide_file_structure`
-- `index_mcp_find_referencing_symbols` -> `ide_find_references`
-- `index_mcp_find_file` -> `ide_find_file`
-- `index_mcp_search_for_pattern` -> `ide_search_text`
+- `find_symbol` -> `ide_find_symbol`
+- `get_symbols_overview` -> `ide_file_structure`
+- `find_referencing_symbols` -> `ide_find_references`
+- `find_file` -> `ide_find_file`
+- `search_for_pattern` -> `ide_search_text`
 
 Additional Index MCP capabilities can be wrapped by Serena later without adding a second Claude-visible MCP connection.
 

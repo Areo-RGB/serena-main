@@ -10,9 +10,7 @@
         "serena",
         "start-mcp-server",
         "--context=claude-code",
-        "--project-from-cwd",
-        "--language-backend",
-        "IndexMCP"
+        "--project-from-cwd"
       ]
     }
   }

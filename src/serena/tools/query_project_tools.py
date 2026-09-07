@@ -66,7 +66,7 @@ class QueryProjectTool(Tool, ToolMarkerOptional, ToolMarkerDoesNotRequireActiveP
 
     def _is_project_server_required(self, tool: Tool) -> bool:
         match self.agent.get_language_backend():
-            case LanguageBackend.JETBRAINS | LanguageBackend.INDEX_MCP:
+            case LanguageBackend.JETBRAINS:
                 return False
             case LanguageBackend.LSP:
                 # Note: As long as only read-only tools are considered, only symbolic tools require the project server.

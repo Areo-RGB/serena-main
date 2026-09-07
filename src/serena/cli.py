@@ -183,7 +183,7 @@ class TopLevelCommands(AutoRegisteringGroup):
         show_default=True,
         help="Default code intelligence backend (can be overridden in the project config).",
     )
-    def init(language_backend: Literal["LSP", "JetBrains", "IndexMCP"] = "LSP") -> None:
+    def init(language_backend: Literal["LSP", "JetBrains"] = "LSP") -> None:
         click.echo(f"\nSerena version: {serena_version()}\n")
         serena_config = SerenaConfig.init(language_backend=LanguageBackend(language_backend))
         click.echo(f"Configuration file: {serena_config.config_file_path}")

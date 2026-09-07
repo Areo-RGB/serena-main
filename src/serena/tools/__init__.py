@@ -8,4 +8,3 @@ from .config_tools import *
 from .workflow_tools import *
 from .jetbrains_tools import *
 from .query_project_tools import *
-from .index_mcp_tools import *
