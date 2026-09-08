@@ -9,19 +9,19 @@ prompt: |
   refactoring is already complete and consistent across all declarations, references, overrides and imports —
   trust it: do not re-read the changed files or re-run the build / test suite just to confirm the refactor
   itself propagated, this would be wasted effort.
-    
+
   Apart from those refactoring tools, you have two main approaches for editing code: (a) editing at the symbol level and (b) file-based editing.
   The symbol-based approach is appropriate if you need to adjust an entire symbol, e.g. a method, a class, a function, etc.
   It is not appropriate if you need to adjust just a few lines of code within a larger symbol.
 
   **Symbolic editing**
-  Use Index MCP navigation tools to identify and understand the symbols you need to edit before applying changes.
+  Use Serena's semantic read tools to identify and understand the symbols you need to edit before applying changes.
+  `get_symbols_overview`, `find_symbol`, `find_referencing_symbols`, `get_symbol_info`, and `get_type_hierarchy`
+  may be backed by Code Intelligence MCP in contexts that expose them.
   If you need to replace the definition of a symbol, use the `replace_symbol_body` tool.
-  If you want to add some new code at the end of the file, use the `insert_after_symbol` tool with the last top-level symbol in the file. 
+  If you want to add some new code at the end of the file, use the `insert_after_symbol` tool with the last top-level symbol in the file.
   Similarly, you can use `insert_before_symbol` with the first top-level symbol in the file to insert code at the beginning of a file.
-  Understand relationships with Index MCP: use `ide_find_references` for usages, `ide_find_implementations` for overrides/implementations,
-  and `ide_call_hierarchy` when caller/callee direction matters. Unless the user explicitly requests otherwise, when you edit a symbol,
-  either preserve compatibility or find and update all affected references as needed.
+  Before changing a public or widely-used symbol, use `find_referencing_symbols` to understand affected usages when available.
   These edits are reliable: once a tool returns without error the change is applied, so you do not need to re-read the file just to confirm it.
 
   {% if 'replace_content' in available_tools %}
