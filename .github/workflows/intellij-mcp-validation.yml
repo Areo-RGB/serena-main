@@ -18,6 +18,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
+      - name: Apply final prompt and hook cleanup
+        run: python scripts/finalize_intellij_mcp_cleanup.py
       - run: uv sync --extra dev
       - name: Compile and lint
         run: |
@@ -27,7 +29,8 @@ jobs:
             src/serena/tools/intellij_mcp_tools.py \
             src/serena/tools/symbol_tools.py \
             src/serena/tools/file_tools.py \
-            src/serena/tools/__init__.py
+            src/serena/tools/__init__.py \
+            src/serena/hooks.py
       - name: Registry and lean-context checks
         run: |
           uv run python - <<'PY'
@@ -57,6 +60,24 @@ jobs:
           assert not Path("src/serena/index_mcp_client.py").exists()
           assert not Path("src/serena/tools/index_mcp_ui_tools.py").exists()
           print("registry/context checks passed")
+          PY
+      - name: Hook classifier check
+        run: |
+          uv run python - <<'PY'
+          from serena.hooks import _is_semantic_code_tool_name
+
+          positive = [
+              "find_symbol",
+              "mcp__serena-index__find_symbol",
+              "get_symbols_overview",
+              "find_referencing_symbols",
+              "get_symbol_info",
+              "get_type_hierarchy",
+          ]
+          negative = ["grep", "read_file", "find_file", "search_for_pattern", "replace_content"]
+          assert all(_is_semantic_code_tool_name(name) for name in positive)
+          assert not any(_is_semantic_code_tool_name(name) for name in negative)
+          print("hook semantic-tool classifier passed")
           PY
       - name: Mock Code Intelligence MCP transport
         run: |
@@ -122,15 +143,22 @@ jobs:
           }
           print("mock transport/coordinate checks passed")
           PY
-      - name: No old Index MCP runtime references
+      - name: No old Index MCP runtime or plugin guidance
         run: |
-          ! grep -R "SERENA_INDEX_MCP\|29170\|ide_find_symbol\|ide_file_structure\|ide_find_references\|ide_find_file\|ide_search_text" \
-            src/serena plugins/serena-index-mcp INTELLIJ_MCP_BACKEND.md
-      - name: Remove temporary workflow
+          ! grep -R --exclude='*.pyc' --exclude-dir='__pycache__' \
+            "SERENA_INDEX_MCP\|29170\|ide_find_symbol\|ide_file_structure\|ide_find_references\|ide_find_file\|ide_search_text\|Index MCP" \
+            src/serena/hooks.py \
+            src/serena/resources/config/contexts/claude-code.yml \
+            src/serena/resources/config/contexts/vscode.yml \
+            src/serena/resources/config/prompt_templates/system_prompt.yml \
+            src/serena/resources/config/modes/editing.yml \
+            plugins/serena-index-mcp \
+            INTELLIJ_MCP_BACKEND.md
+      - name: Commit finalized migration and remove temporary scaffolding
         run: |
-          rm -f .github/workflows/intellij-mcp-validation.yml
+          rm -f scripts/finalize_intellij_mcp_cleanup.py .github/workflows/intellij-mcp-validation.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "chore: remove temporary intellij-mcp validation workflow"
+          git commit -m "refactor: finalize Code Intelligence MCP backend"
           git push origin HEAD:refactor/intellij-mcp-backend
