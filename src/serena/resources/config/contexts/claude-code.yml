@@ -1,43 +1,41 @@
-description: Claude Code (lean Serena MCP with Index MCP-backed discovery/navigation)
+description: Claude Code (lean Serena MCP with Code Intelligence MCP-backed semantic reads)
 prompt: |
-  You are running in Claude Code, where built-in file, shell, and line-edit tools are available.
+  You are running in Claude Code, where built-in file, shell, search, and line-edit tools are available.
 
-  This plugin exposes Serena as the single coding MCP. Serena's discovery/navigation wrappers call
-  JetBrains Index MCP internally; there is no separate direct `ide_*` MCP server for Claude to use.
+  This plugin exposes Serena as the single coding MCP. Serena uses the small Code Intelligence MCP
+  (`intellij-mcp`) service inside JetBrains for semantic code reads. There is no separate agent-visible
+  IntelliJ/Index MCP server.
 
-  Prefer these Serena tools:
-  - file structure / outline       -> get_symbols_overview
-  - symbol search                  -> find_symbol
-  - references/usages              -> find_referencing_symbols
-  - file-name search               -> find_file
-  - text/regex search              -> search_for_pattern
-  - open file in JetBrains IDE     -> open_file
-  - switch JetBrains + Serena      -> switch_project
+  Prefer these Serena semantic tools for indexed source code:
+  - file structure / outline       -> get_symbols_overview  (internal get_file_symbols)
+  - symbol search                  -> find_symbol           (internal find_symbol)
+  - references/usages              -> find_referencing_symbols (internal find_references)
+  - symbol type/docs/signature     -> get_symbol_info       (internal get_symbol_info)
+  - inheritance hierarchy          -> get_type_hierarchy    (internal get_type_hierarchy)
 
-  Use `activate_project` only when Serena has no active project yet. For an already-active session where the
-  user wants to move to another project, prefer `switch_project`, which opens/indexes it in JetBrains first and
-  then activates the same path in Serena.
+  Use Claude Code's native file-name search, text/regex search, file reads, navigation, and shell tools.
+  Do not look for Serena wrappers for file search, text search, opening files, or opening projects.
 
-  For edits, use the small Serena editing surface exposed by this context:
+  Use `activate_project` when Serena is not working on the intended project. The corresponding project must
+  already be open in JetBrains for Code Intelligence MCP semantic calls to work.
+
+  For edits, use the small Serena/LSP editing surface exposed by this context:
   `replace_symbol_body`, `insert_before_symbol`, `insert_after_symbol`, `replace_content`, and `replace_in_files`.
 
-  The Serena MCP is explicitly launched with the LSP language backend. Do not use or look for
-  `jet_brains_*` tools from Serena's separate JetBrains-plugin backend; that backend is not part of this plugin.
+  Serena is explicitly launched with the LSP language backend for its native editing functionality. Do not use
+  or look for `jet_brains_*` tools from Serena's separate JetBrains-plugin backend.
 
-  Read/Glob/Grep and normal line edits are available through Claude Code itself and are fallbacks where appropriate.
   Do not call `initial_instructions` as a routine startup step; this context already provides the relevant guidance.
 
-# Keep the agent-facing MCP surface deliberately small. Client-native file/shell tools and Serena diagnostics,
-# memories, cross-project query helpers, and the separate Serena JetBrains-plugin backend are intentionally omitted.
+# Deliberately small agent-facing MCP surface. Client-native file/search/shell/navigation tools, Serena diagnostics,
+# memories, cross-project query helpers, and the separate Serena JetBrains-plugin backend are omitted.
 fixed_tools:
   - activate_project
-  - find_file
   - get_symbols_overview
   - find_symbol
   - find_referencing_symbols
-  - search_for_pattern
-  - open_file
-  - switch_project
+  - get_symbol_info
+  - get_type_hierarchy
   - replace_symbol_body
   - insert_before_symbol
   - insert_after_symbol
@@ -45,10 +43,7 @@ fixed_tools:
   - replace_in_files
 
 tool_description_overrides: {}
-
-# The tool surface is already fixed/lean, so allow explicit project switching when needed.
 single_project: false
 
-# Claude Code has a bug (it does not unpack structured tool output, causing a lot of unnecessary escaping
-# owing to the wrapped structure), so we disable it here.
+# Claude Code does not unpack structured tool output cleanly, so keep string output here.
 structured_tool_output: false
