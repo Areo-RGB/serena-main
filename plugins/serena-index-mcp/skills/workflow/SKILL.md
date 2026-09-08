@@ -1,27 +1,25 @@
 ---
-description: Use when working with the Areo-RGB Serena Index MCP fork, choosing Serena tools, explaining the integration, or troubleshooting its MCP/hook workflow.
+description: Use when working with the Areo-RGB Serena fork backed by Code Intelligence MCP (intellij-mcp), choosing Serena tools, or troubleshooting the MCP/hook workflow.
 ---
 
-# Serena Index MCP workflow
+# Serena + Code Intelligence MCP workflow
 
 This plugin exposes **one MCP server to Claude Code: Serena** with a deliberately small tool surface.
 
-JetBrains Index MCP is an internal backend used by selected Serena tools. Do not look for or call a separate direct `ide_*` MCP server.
+Code Intelligence MCP (`intellij-mcp`) runs inside JetBrains and is used only as Serena's semantic-read backend. Do not look for or call it as a separate Claude-visible MCP server.
 
 ## Exposed Serena tools
 
-Discovery/navigation:
+Semantic reads:
 
-- `find_file` -> internal `ide_find_file`
-- `get_symbols_overview` -> internal `ide_file_structure`
-- `find_symbol` -> internal `ide_find_symbol`
-- `find_referencing_symbols` -> internal `ide_find_references`
-- `search_for_pattern` -> internal `ide_search_text`
-- `open_file` -> internal `ide_open_file`
-- `switch_project` -> internal `ide_open_project`, then Serena project activation
-- `activate_project` -> Serena-only activation when no project is active yet
+- `get_symbols_overview` -> internal `get_file_symbols`
+- `find_symbol` -> internal `find_symbol`
+- `find_referencing_symbols` -> internal `find_references`
+- `get_symbol_info` -> internal `get_symbol_info`
+- `get_type_hierarchy` -> internal `get_type_hierarchy`
+- `activate_project` -> Serena project selection
 
-Editing:
+Editing through Serena/LSP:
 
 - `replace_symbol_body`
 - `insert_before_symbol`
@@ -29,22 +27,17 @@ Editing:
 - `replace_content`
 - `replace_in_files`
 
-Do not expect Serena config/diagnostic helpers, memories, cross-project query helpers, raw file/shell tools, or the separate `jet_brains_*` backend tools in this plugin.
-
-## Project switching
-
-Use `activate_project` when Serena has no active project yet.
-
-Once a project is active, prefer `switch_project(path, auto_link=false, timeout_seconds=600)` to move to another project. It opens/indexes the absolute path in JetBrains first and then activates the same path in Serena.
-
-`ide_open_project` requires at least one JetBrains project to already be open as the Index MCP request context.
+Use Claude Code's native file-name search, text/regex search, file reads, navigation, and shell tools. Those operations are intentionally not duplicated in Serena.
 
 ## Runtime expectations
 
 - Claude-visible MCP: Serena only.
 - Serena is launched from `git+https://github.com/Areo-RGB/serena-main` through `uvx -p 3.13`.
-- The plugin forces `--language-backend LSP`, so Serena's separate JetBrains-plugin backend does not inject `jet_brains_*` tools.
-- Index-backed wrappers expect `http://127.0.0.1:29170/index-mcp/streamable-http`.
-- `ide_open_file` and `ide_open_project` are opt-in Index MCP tools; enable them under **Settings > Tools > Index MCP Server > Exposed Tools**.
+- Serena is forced to `--language-backend LSP` for its native editing tools, so its separate `jet_brains_*` backend does not appear.
+- Code Intelligence MCP is expected at `http://127.0.0.1:9876/mcp`.
+- The corresponding Serena project must be open in JetBrains for semantic calls to resolve against the IDE project.
+- Code Intelligence MCP uses 1-based positions; Serena exposes 0-based positions and converts at the adapter boundary.
+
+If JetBrains reports that it is still indexing, wait for indexing to finish and retry the semantic read once. Do not treat normal dumb-mode/indexing state as a Serena adapter bug.
 
 Do not call `initial_instructions` routinely. The Claude context and SessionStart hook already provide the workflow guidance.
