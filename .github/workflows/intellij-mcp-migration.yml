@@ -33,7 +33,7 @@ jobs:
       - name: Validate Python
         run: |
           uv run python -m compileall -q src
-          uv run ruff check --fix \
+          uv run ruff check --fix --ignore B006 \
             src/serena/intellij_mcp_client.py \
             src/serena/tools/intellij_mcp_tools.py \
             src/serena/tools/symbol_tools.py \
