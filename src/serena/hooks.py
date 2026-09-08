@@ -48,10 +48,9 @@ class Hook(ABC):
         pass
 
 
-#: Index MCP exposes code-intelligence/refactoring tools with an ``ide_`` prefix.
-#: Clients namespace MCP tools differently (for example Claude Code commonly emits
-#: ``mcp__index-mcp__ide_find_symbol``), so classification is deliberately based on
-#: the leaf tool name rather than the configured MCP server name.
+#: Serena exposes the Code Intelligence MCP backend through a small semantic read surface.
+#: Clients namespace MCP tools differently, so classification uses the leaf tool name rather
+#: than the configured Serena MCP server name.
 def _tool_leaf_name(tool_name: str) -> str:
     name = tool_name.lower().strip()
     for separator in ("__", ".", "/"):
@@ -60,8 +59,19 @@ def _tool_leaf_name(tool_name: str) -> str:
     return name
 
 
-def _is_index_mcp_tool_name(tool_name: str) -> bool:
-    return _tool_leaf_name(tool_name).startswith("ide_")
+_SEMANTIC_CODE_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        "get_symbols_overview",
+        "find_symbol",
+        "find_referencing_symbols",
+        "get_symbol_info",
+        "get_type_hierarchy",
+    }
+)
+
+
+def _is_semantic_code_tool_name(tool_name: str) -> bool:
+    return _tool_leaf_name(tool_name) in _SEMANTIC_CODE_TOOL_NAMES
 
 
 class PreToolUseHook(Hook, ABC):
@@ -106,39 +116,17 @@ class PreToolUseHook(Hook, ABC):
                 hook_output["hookSpecificOutput"]["additionalContext"] = self.additional_context
             return json.dumps(hook_output)
 
-    def is_index_mcp_tool(self) -> bool:
-        return _is_index_mcp_tool_name(self._tool_name)
+    def is_semantic_code_tool(self) -> bool:
+        return _is_semantic_code_tool_name(self._tool_name)
 
 
 class PreToolUseRemindAboutSymbolicToolsHook(PreToolUseHook):
-    """Pre-tool-use hook that nudges the agent toward Index MCP code-intelligence tools.
+    """Nudge the agent toward Serena semantic code tools after repeated raw grep/read calls.
 
-    Tracks consecutive uses of grep and read-file tools via a persisted
-    :class:`ToolUseCounter`. When the number of recent calls reaches the
-    configured threshold, a deny response is emitted with a reminder to
-    use symbolic alternatives.
-
-    The counter for a given tool type is reset whenever
-
-    * an Index MCP ``ide_*`` tool is invoked (both counters are reset),
-    * a deny is emitted (the acting counter is reset so the next retry starts fresh),
-    * or the configured reset period elapses *between two consecutive calls of that
-      same tool type* — i.e. the period gates the gap between successive calls, not
-      an absolute sliding window. Three grep calls at t=0, t=9, t=18 therefore count
-      as a burst of three, even though the total span (18s) exceeds the 10s grep
-      period; only an individual pair that is more than 10s apart resets the counter.
-
-    Non-tracked tools (Edit, Write, Bash, etc.) are deliberately neutral: they neither
-    increment nor reset counters, so they also do not mask bursts by pushing the last
-    timestamp forward.
-
-    The hook is additionally gated by :attr:`ToolUseCounter._MIN_DENY_INTERVAL_SECONDS`
-    (two minutes by default): once a deny has been emitted, *every* subsequent
-    invocation of this hook is a no-op until the window has elapsed — neither the
-    counters are updated nor any further deny is produced. This prevents the agent
-    from being nudged more than once per window during a sustained non-symbolic-tool
-    burst, and also avoids surprising the user with reminders that were already
-    counted up under stale state.
+    The persisted counters are reset whenever one of Serena's five semantic Code Intelligence MCP
+    wrappers is used, when a deny/reminder is emitted, or after the existing reset interval. Raw
+    file and text tools remain valid fallbacks for non-code, generated, malformed, or genuinely
+    text-oriented work.
     """
 
     @dataclass
@@ -167,7 +155,7 @@ class PreToolUseRemindAboutSymbolicToolsHook(PreToolUseHook):
         last_read_file_use_timestamp: datetime | None = None
         last_non_symbolic_use_timestamp: datetime | None = None
         # timestamp of the most recently emitted deny; deliberately not cleared by
-        # :meth:`reset` so the rate limit survives counter resets (e.g. Index MCP tool use)
+        # :meth:`reset` so the rate limit survives counter resets (e.g. semantic Serena tool use)
         last_deny_timestamp: datetime | None = None
 
         def too_many_recent_reads(self) -> bool:
@@ -214,7 +202,7 @@ class PreToolUseRemindAboutSymbolicToolsHook(PreToolUseHook):
                 pass
 
         def update(self, hook: "PreToolUseRemindAboutSymbolicToolsHook") -> None:
-            if hook.is_index_mcp_tool():
+            if hook.is_semantic_code_tool():
                 self.reset()
                 return
 
@@ -282,8 +270,8 @@ class PreToolUseRemindAboutSymbolicToolsHook(PreToolUseHook):
 
     #: file suffixes for source-like files where symbolic tools are usually more
     #: appropriate than repeated raw reads. Lowercase and extension-only.
-    #: Index MCP's ``ide_search_text`` and structural navigation tools are the preferred
-    #: alternatives to repeated raw reads for source-like files.
+    #: Serena's semantic Code Intelligence MCP wrappers are preferred over repeated raw reads
+    #: when the task is symbol- or structure-oriented.
     _CODE_FILE_EXTENSIONS: frozenset[str] = frozenset(
         (
             ".al",
@@ -486,56 +474,45 @@ class PreToolUseRemindAboutSymbolicToolsHook(PreToolUseHook):
     def _build_grep_deny(self) -> "PreToolUseHook.OutputData":
         return self.OutputData(
             permission_decision="deny",
-            permission_decision_reason="Too many consecutive grep calls without using Index MCP code-intelligence tools. "
+            permission_decision_reason="Too many consecutive grep calls without using Serena semantic code tools. "
             "You can continue using grep now if needed; the counter was reset.",
             additional_context=(
-                "You were using many grep calls recently. Prefer Index MCP for code discovery: "
-                "`ide_find_symbol` for symbols, `ide_find_references` for usages, `ide_find_file` for files, "
-                "and `ide_search_text` for indexed text search. You can continue using grep if Index MCP cannot express the query."
+                "You were using many grep calls recently. For source-code discovery prefer Serena's semantic tools: "
+                "`find_symbol` for definitions, `find_referencing_symbols` for usages, "
+                "`get_symbols_overview` for file structure, `get_symbol_info` for signature/docs, and "
+                "`get_type_hierarchy` for inheritance. Use the client's normal file/text search when the query is "
+                "not semantic."
             ),
         )
 
     def _build_code_read_deny(self) -> "PreToolUseHook.OutputData":
         return self.OutputData(
             permission_decision="deny",
-            permission_decision_reason="Too many consecutive code-file reads without using Index MCP code-intelligence tools. "
+            permission_decision_reason="Too many consecutive code-file reads without using Serena semantic code tools. "
             "You can continue using read now if needed; the counter was reset.",
             additional_context=(
-                "You were repeatedly reading code files. Prefer Index MCP for targeted code understanding: "
-                "`ide_file_structure` for file structure, `ide_find_definition` for the exact declaration, "
-                "`ide_symbol_info` for signature/docs when enabled, and `ide_find_symbol` for named symbols."
+                "You were repeatedly reading code files. Prefer `get_symbols_overview` to inspect structure, "
+                "`find_symbol` to locate a definition, `get_symbol_info` for type/signature/documentation, "
+                "`find_referencing_symbols` for usages, and `get_type_hierarchy` for inheritance before reading "
+                "larger source regions."
             ),
         )
 
     def _build_non_symbolic_deny(self) -> "PreToolUseHook.OutputData":
         return self.OutputData(
             permission_decision="deny",
-            permission_decision_reason="Too many consecutive raw grep/read calls without using Index MCP code-intelligence tools. "
+            permission_decision_reason="Too many consecutive raw grep/read calls without using Serena semantic code tools. "
             "You can continue using them now if needed; the counter was reset.",
             additional_context=(
-                "You were alternating between grep and file reads without using Index MCP. Switch to indexed/semantic navigation: "
-                "`ide_file_structure`, `ide_find_symbol`, `ide_find_definition`, `ide_find_references`, "
-                "or `ide_search_text` as appropriate."
+                "You were alternating between grep and file reads. Switch to Serena's semantic code tools when the "
+                "question is about symbols, usages, signatures, file structure, or type inheritance; otherwise keep "
+                "using the client's built-in text/file tools."
             ),
         )
 
 
 class PostToolUseResetSymbolicToolCounterHook(Hook):
-    """Post-tool-use hook that resets :class:`PreToolUseRemindAboutSymbolicToolsHook`'s
-    persisted counters after a successful Index MCP ``ide_*`` tool call.
-
-    ``PreToolUseRemindAboutSymbolicToolsHook`` already resets on an Index MCP tool call, but
-    only when it is itself invoked for that call, which requires the client's PreToolUse
-    matcher to observe Index MCP tool names. Codex's documented wiring (see
-    docs/02-usage/030_clients.md) attaches ``remind`` to the ``Bash`` matcher only, so it
-    is never invoked for Index MCP tools there and the reset branch is unreachable.
-    This hook closes that gap from the other side of the call: wired to PostToolUse with a
-    matcher on Index MCP tools, it fires once the call has completed.
-
-    Gated on the call having succeeded (``tool_response`` carrying no ``isError: true``,
-    the MCP ``tools/call`` result shape) so a failed Index MCP call does not mask a real
-    grep/read-drift streak the agent is still in.
-    """
+    """Reset raw grep/read drift counters after a successful Serena semantic tool call."""
 
     def __init__(self, client: HookClient):
         super().__init__(client)
@@ -555,7 +532,7 @@ class PostToolUseResetSymbolicToolCounterHook(Hook):
         return self._tool_response.get("isError") is not True
 
     def execute(self) -> None:
-        if not _is_index_mcp_tool_name(self._tool_name) or not self._call_succeeded():
+        if not _is_semantic_code_tool_name(self._tool_name) or not self._call_succeeded():
             return
         counter = PreToolUseRemindAboutSymbolicToolsHook.ToolUseCounter.load(self)
         counter.reset()
@@ -565,11 +542,11 @@ class PostToolUseResetSymbolicToolCounterHook(Hook):
 class SessionStartActivateProjectHook(Hook):
     def execute(self) -> None:
         message = (
-            "**IMPORTANT**: For coding work, use Index MCP `ide_*` tools as the primary discovery/navigation layer "
-            "before raw Grep/Read. Prefer `ide_file_structure`, `ide_find_symbol`, `ide_find_definition`, "
-            "`ide_find_references`, `ide_find_file`, and `ide_search_text` as appropriate. "
-            "Use Serena for editing/refactoring/project workflow where needed; activate the current project in Serena "
-            "before Serena edits, and read the Serena Instructions Manual if you have not already."
+            "**IMPORTANT**: For coding work, use Serena as the single MCP. Prefer `get_symbols_overview`, "
+            "`find_symbol`, `find_referencing_symbols`, `get_symbol_info`, and `get_type_hierarchy` for semantic "
+            "code understanding; those tools use Code Intelligence MCP internally. Use the client's native file/text "
+            "search for filenames and regex/text queries, and Serena's editing tools for changes. Activate the current "
+            "project in Serena before project-scoped work when no project is active."
         )
         result = {
             "hookSpecificOutput": {
@@ -585,21 +562,11 @@ class SessionEndCleanupHook(Hook):
         shutil.rmtree(self.session_persistence_dir, ignore_errors=True)
 
 
-class PreToolUseAutoApproveIndexMcpHook(PreToolUseHook):
-    """Pre-tool-use hook that auto-approves Index MCP tools in permissive permission modes.
+class PreToolUseAutoApproveSemanticToolHook(PreToolUseHook):
+    """Auto-approve Serena's read-only semantic code tools in permissive client modes.
 
-    Claude Code's permissive permission modes (``acceptEdits`` for blanket edit approval and
-    ``auto`` for hands-off autonomous execution) do not necessarily cover MCP calls. Index MCP
-    includes both read-only code-intelligence tools and refactoring/editing tools, so this hook
-    emits an ``allow`` decision for any ``ide_*`` MCP tool whenever the client reports one of these modes as
-    the active permission mode, so blanket approvals also cover Index MCP tools. In all other
-    situations it stays silent, preserving the default approval flow.
-
-    ``bypassPermissions`` and ``dontAsk`` are deliberately excluded. ``bypassPermissions``
-    already approves everything before the hook would matter, so silence here is harmless.
-    ``dontAsk`` is the user's deliberate deny-by-default posture (auto-deny unless an explicit
-    allow rule matches); the hook honors that choice and stays silent rather than blanket
-    overriding it.
+    These five tools only query Code Intelligence MCP; editing remains on Serena's separate edit tools and
+    therefore keeps the client's normal approval behavior.
     """
 
     #: permission modes for which this hook emits an ``allow`` decision. Frozen so the
@@ -612,14 +579,14 @@ class PreToolUseAutoApproveIndexMcpHook(PreToolUseHook):
 
     def execute(self) -> None:
         # only emit a decision when both the tool and the mode match; stay silent otherwise
-        if not self.is_index_mcp_tool() or not self.is_auto_approve_mode():
+        if not self.is_semantic_code_tool() or not self.is_auto_approve_mode():
             return
 
         # name the actual mode in the reason so logs/debug output are unambiguous
         # (the same hook handles multiple modes now)
         output_data = self.OutputData(
             permission_decision="allow",
-            permission_decision_reason=f"Auto-approved: Index MCP tool call while client is in {self._permission_mode} mode.",
+            permission_decision_reason=f"Auto-approved: Serena semantic read while client is in {self._permission_mode} mode.",
         )
         click.echo(output_data.to_json_string(self._client))
 
@@ -637,13 +604,13 @@ class HookCommands(AutoRegisteringGroup):
     def __init__(self) -> None:
         super().__init__(
             name="serena-hook",
-            help="Commands that steer coding agents toward Index MCP code intelligence and Serena editing workflows.",
+            help="Commands that steer coding agents toward Serena semantic code tools and editing workflows.",
         )
 
     @staticmethod
     @click.command(
         "activate",
-        help="Set this as SessionStart hook to prioritize Index MCP code intelligence and initialize Serena when edits are needed",
+        help="Set this as SessionStart hook to prioritize Serena semantic code tools and activate projects when needed",
     )
     @_client_option
     def activate(client: str) -> None:
@@ -658,7 +625,7 @@ class HookCommands(AutoRegisteringGroup):
     @staticmethod
     @click.command(
         "remind",
-        help="Set this as PreToolUse hook to prefer Index MCP ide_* tools over repeated raw read_file/grep calls",
+        help="Set this as PreToolUse hook to prefer Serena semantic code tools over repeated raw read_file/grep calls",
     )
     @_client_option
     def remind(client: str) -> None:
@@ -667,19 +634,19 @@ class HookCommands(AutoRegisteringGroup):
     @staticmethod
     @click.command(
         "auto-approve",
-        help="Set this as PreToolUse hook to auto-approve Index MCP ide_* calls while the client is in a "
+        help="Set this as PreToolUse hook to auto-approve Serena semantic read calls while the client is in a "
         "permissive permission mode (acceptEdits or auto, Claude Code).",
     )
     @_client_option
     def auto_approve(client: str) -> None:
-        PreToolUseAutoApproveIndexMcpHook(HookClient(client)).execute()
+        PreToolUseAutoApproveSemanticToolHook(HookClient(client)).execute()
 
     @staticmethod
     @click.command(
         "reset",
-        help="Set this as PostToolUse hook, matched to Index MCP ide_* tools, to reset grep/read-drift "
-        "counters after a successful Index MCP call. For clients whose PreToolUse wiring only observes shell tools; "
-        "complements `remind`'s own reset branch.",
+        help="Set this as PostToolUse hook, matched to Serena semantic tools, to reset grep/read-drift "
+        "counters after a successful semantic call; complements `remind` for clients whose PreToolUse wiring only "
+        "observes shell tools.",
     )
     @_client_option
     def reset(client: str) -> None:

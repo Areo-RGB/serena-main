@@ -9,21 +9,19 @@ prompts:
     generate content the task doesn't need.
 
     Some tasks require understanding a large part of the codebase; others need only a few symbols or a
-    single file. Avoid reading whole files unless necessary. For source-code discovery/navigation, use
-    Index MCP's JetBrains-backed `ide_*` tools first, then read only the code that is actually needed.
+    single file. Avoid reading whole files unless necessary. When available, prefer Serena's semantic code tools
+    before broad raw reads:
 
-    Preferred Index MCP navigation flow:
-    - `ide_file_structure` for a source-file outline.
-    - `ide_find_symbol` when you know all or part of a symbol name.
-    - `ide_find_definition` to resolve the exact declaration at a file/line/column.
-    - `ide_find_references` for semantic usages.
-    - `ide_find_file` for indexed file-name search.
-    - `ide_search_text` for text/regex discovery when semantic lookup is not the right query.
-    - `ide_symbol_info` for signature/documentation without reading the full file, when enabled.
-    - `ide_find_implementations`, `ide_call_hierarchy`, and `ide_type_hierarchy` for deeper relationships.
+    - `get_symbols_overview` for a source-file outline.
+    - `find_symbol` for definitions by name.
+    - `find_referencing_symbols` for semantic usages.
+    - `get_symbol_info` for type information, signatures, and documentation.
+    - `get_type_hierarchy` for inheritance relationships.
 
-    Raw reads and grep are fallbacks for unindexed/generated/malformed files or genuinely text-oriented work,
-    not the default path for understanding source code.
+    In the Claude Code and VS Code contexts these five Serena tools use Code Intelligence MCP internally. The
+    backend intentionally does not provide filename or text/regex search, so use the client's native file/text
+    tools for those queries. Raw reads remain appropriate for non-code, generated, malformed, or genuinely
+    text-oriented work.
     
     {% if 'read_memory' in available_tools -%}
     You generally have access to memories and it may be useful for you to read them.
@@ -33,7 +31,7 @@ prompts:
     {%- endif -%}
     {%- endif %}
     
-    Serena tool line numbers are 0-based; Index MCP locations are 1-based unless a tool schema states otherwise.
+    Serena tool line numbers are 0-based; Code Intelligence MCP locations are normalized by Serena before being returned.
 
     Serena executes tool calls one at a time internally, even when you request several at once. So whenever you have
     independent operations to perform, you can safely issue them as parallel tool calls in a single turn: they are applied
@@ -59,43 +57,38 @@ prompts:
 
     # Tool selection (read this before every tool call on a code file)
 
-    This setup uses Index MCP as the PRIMARY code-intelligence/navigation layer and Serena as a
-    complementary editing/project-workflow layer. Prefer the JetBrains-backed `ide_*` tools before
-    raw Read/Glob/Grep on source code.
+    Serena is the single coding MCP exposed by this setup. Prefer its five semantic read tools for indexed
+    source-code understanding; Code Intelligence MCP is an internal backend and is not called directly.
 
     ## Mapping
 
     Task                                    Primary tool
     --------------------------------------  ----------------------------------------
-    See a code file's structure             ide_file_structure
-    Find a symbol by name                   ide_find_symbol
-    Resolve exact definition                ide_find_definition
-    Find references / usages                ide_find_references
-    Find declarations / implementations     ide_find_definition / ide_find_implementations
-    Search for a file                       ide_find_file
-    Search code text / regex                ide_search_text
-    Get signature / docs                    ide_symbol_info
-    Caller / callee relationships           ide_call_hierarchy
-    Type hierarchy                          ide_type_hierarchy
-    Rename symbol/file                      ide_refactor_rename
-    IDE-aware member edit (when supported)  ide_edit_member / ide_replace_member / ide_insert_member
-    General targeted text edit              ide_replace_text_in_file or Serena replace_content
+    See a code file's structure             get_symbols_overview
+    Find a symbol by name                   find_symbol
+    Find references / usages                find_referencing_symbols
+    Get type/signature/docs                 get_symbol_info
+    Type / inheritance hierarchy            get_type_hierarchy
+    Search for a file                       Claude Code built-in file search
+    Search code text / regex                Claude Code built-in Grep/search
+    Symbol-level edit                       Serena replace_symbol_body / insert_*
+    Targeted text edit                      Serena replace_content / replace_in_files
 
-    Use Serena editing/refactoring tools when the corresponding Index MCP edit tool is unavailable,
-    disabled, or unsupported for the target language. Built-in Read/Edit/Glob/Grep remain fallbacks
-    for unindexed, malformed, generated, or genuinely text-oriented work.
+    Use Serena's semantic tools before broad code-file reads when the task is about symbols, relationships,
+    structure, signatures, or types. Use built-in file/text search when that is the actual query; the backend
+    intentionally exposes only the five semantic features above.
 
     ## Required workflow before editing code
 
-    1. Use Index MCP to locate and understand the target (`ide_file_structure`, `ide_find_symbol`,
-       `ide_find_definition`, `ide_find_references` as appropriate).
-    2. Prefer an Index MCP refactoring/edit tool when it directly represents the change.
-    3. Otherwise use Serena's editing tools; use raw built-in Edit only when neither MCP layer fits.
+    1. Locate and understand the target with the relevant Serena semantic read tool.
+    2. Check `find_referencing_symbols` before changing a public or widely-used symbol when usages matter.
+    3. Apply the smallest suitable Serena symbolic or targeted text edit. Use raw built-in Edit when Serena's
+       editing surface does not fit the change cleanly.
 
     ## Self-check
 
-    Before every Read, Glob, Grep, or Edit call on source code, ask whether an `ide_*` Index MCP tool
-    can answer or perform the operation more semantically. If yes, use Index MCP.
+    Before broad Read/Grep operations on source code, ask whether one of the five Serena semantic tools answers
+    the question more directly. Do not force a semantic tool onto filename or text/regex searches.
 
     # Doing tasks
 
