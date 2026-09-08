@@ -1,17 +1,17 @@
-# Serena Index MCP Claude Code plugin
+# Serena Code Intelligence MCP Claude Code plugin
 
-This plugin exposes the Areo-RGB Serena fork as the single Claude Code MCP server. Selected Serena discovery/navigation tools use JetBrains Index MCP internally, but Claude does not connect to Index MCP directly.
+Package/install name remains `serena-index-mcp` for update compatibility, but the runtime backend is now the much smaller **Code Intelligence MCP (`intellij-mcp`)** service rather than JetBrains Index MCP.
 
-## Install from GitHub
+Claude sees only Serena. Serena uses five intellij-mcp semantic tools internally and keeps its native LSP editing layer.
+
+## Install / update
 
 ```text
 /plugin marketplace add Areo-RGB/serena-main
 /plugin install serena-index-mcp@areo-rgb
 ```
 
-After installation, restart Claude Code or run `/reload-plugins` when prompted.
-
-To refresh later:
+Update later with:
 
 ```bash
 claude plugin marketplace update areo-rgb
@@ -20,23 +20,21 @@ claude plugin update serena-index-mcp@areo-rgb --scope user
 
 ## Lean tool surface
 
-The Claude context intentionally exposes only this small Serena set:
+The Claude context exposes only these 11 Serena tools:
 
 - `activate_project`
-- `find_file`
 - `get_symbols_overview`
 - `find_symbol`
 - `find_referencing_symbols`
-- `search_for_pattern`
-- `open_file`
-- `switch_project`
+- `get_symbol_info`
+- `get_type_hierarchy`
 - `replace_symbol_body`
 - `insert_before_symbol`
 - `insert_after_symbol`
 - `replace_content`
 - `replace_in_files`
 
-Serena diagnostics/config helpers, memories, cross-project query helpers, raw file/shell tools already provided by Claude Code, and the separate Serena JetBrains-plugin `jet_brains_*` tool family are deliberately omitted.
+Claude Code already provides file-name search, text/regex search, file reads, navigation, shell access, and line editing, so Serena no longer duplicates those operations in this plugin.
 
 ## Architecture
 
@@ -46,29 +44,28 @@ Claude Code
     v
 Serena MCP (`serena-index`)
     |
-    +-- find_file --------------------> ide_find_file
-    +-- get_symbols_overview ---------> ide_file_structure
-    +-- find_symbol ------------------> ide_find_symbol
-    +-- find_referencing_symbols -----> ide_find_references
-    +-- search_for_pattern -----------> ide_search_text
-    +-- open_file --------------------> ide_open_file
-    +-- switch_project ---------------> ide_open_project + Serena activation
+    +-- get_symbols_overview ---------> get_file_symbols
+    +-- find_symbol ------------------> find_symbol
+    +-- find_referencing_symbols -----> find_references
+    +-- get_symbol_info --------------> get_symbol_info
+    +-- get_type_hierarchy -----------> get_type_hierarchy
                                         |
                                         v
-                              JetBrains Index MCP
+                         Code Intelligence MCP
+                         http://127.0.0.1:9876/mcp
+                         (inside JetBrains)
+
+Serena editing tools
+    |
+    v
+Serena / LSP
 ```
 
-There is no separate Claude-visible Index MCP server.
-
-`open_file(relative_path, line?, column?)` accepts Serena's 0-based line/column coordinates and converts them to Index MCP's 1-based coordinates.
-
-`switch_project(path, auto_link=false, timeout_seconds=600)` first opens/indexes an absolute project path in JetBrains through `ide_open_project`, then activates the same path in Serena. Use `activate_project` alone when Serena has no active project yet.
-
-`ide_open_file` and `ide_open_project` are opt-in Index MCP tools. Enable them under **Settings > Tools > Index MCP Server > Exposed Tools**.
+There is no separate Claude-visible IntelliJ/Index MCP connection.
 
 ## Runtime
 
-The plugin explicitly uses Serena's **LSP** backend for the remaining native Serena tools, preventing the separate Serena JetBrains-plugin backend from injecting its `jet_brains_*` tools:
+The plugin starts Serena with:
 
 ```bash
 uvx -p 3.13 \
@@ -79,11 +76,15 @@ uvx -p 3.13 \
   --project-from-cwd
 ```
 
-The Index-backed wrappers expect:
+Requirements:
 
-```text
-http://127.0.0.1:29170/index-mcp/streamable-http
-```
+1. Claude Code
+2. `uv` / `uvx`
+3. JetBrains IDE with the Code Intelligence MCP (`intellij-mcp`) plugin running
+4. Target project open in JetBrains
+5. MCP endpoint available at `http://127.0.0.1:9876/mcp` (override with `SERENA_INTELLIJ_MCP_URL`)
+
+Code Intelligence MCP reports source positions as 1-based; Serena converts them to its public 0-based coordinate model.
 
 ## Test locally
 
@@ -91,4 +92,4 @@ http://127.0.0.1:29170/index-mcp/streamable-http
 claude --plugin-dir ./plugins/serena-index-mcp
 ```
 
-Then use `/plugin` to inspect the MCP tool list. It should show the lean Serena surface above and no `jet_brains_*` tools.
+The Serena MCP tool list should contain the 11 tools above, no `jet_brains_*` tools, and no old Index-MCP navigation wrappers such as `open_file` or `switch_project`.
