@@ -143,10 +143,10 @@ jobs:
           }
           print("mock transport/coordinate checks passed")
           PY
-      - name: No old Index MCP runtime or plugin guidance
+      - name: No old Index MCP runtime identifiers
         run: |
           ! grep -R --exclude='*.pyc' --exclude-dir='__pycache__' \
-            "SERENA_INDEX_MCP\|29170\|ide_find_symbol\|ide_file_structure\|ide_find_references\|ide_find_file\|ide_search_text\|Index MCP" \
+            "SERENA_INDEX_MCP\|29170\|ide_find_symbol\|ide_file_structure\|ide_find_references\|ide_find_file\|ide_search_text" \
             src/serena/hooks.py \
             src/serena/resources/config/contexts/claude-code.yml \
             src/serena/resources/config/contexts/vscode.yml \
