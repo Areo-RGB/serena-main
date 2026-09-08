@@ -7,8 +7,8 @@
     {
       "name": "serena-index-mcp",
       "source": "./plugins/serena-index-mcp",
-      "description": "Claude Code integration for the Areo-RGB Serena fork, exposing a lean Serena MCP toolset while selected tools use JetBrains Index MCP internally.",
-      "version": "0.1.8",
+      "description": "Claude Code integration for the Areo-RGB Serena fork, exposing a lean Serena toolset with five semantic reads backed by Code Intelligence MCP (intellij-mcp).",
+      "version": "0.1.9",
       "author": {
         "name": "Areo-RGB"
       }
